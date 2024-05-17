@@ -27,6 +27,20 @@
 #include <RHI/Conversion.h>
 #include <RHI/BufferView.h>
 
+#include <execinfo.h>
+void print_stack(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    for (int i = 0; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+
+int g_limit_count = 0;
+
 namespace AZ
 {
     namespace Vulkan
@@ -78,6 +92,7 @@ namespace AZ
 
         RHI::Ptr<Scope> Scope::Create()
         {
+            printf("Vulkan Scope Created!\n");
             return aznew Scope();
         }
 
@@ -356,6 +371,7 @@ namespace AZ
             m_deviceSupportedPipelineStageFlags = device.GetCommandQueueContext().GetCommandQueue(GetHardwareQueueClass()).GetSupportedPipelineStages();
 
             RHI::FrameEventBus::Handler::BusConnect(&deviceBase);
+            printf("Vulkan Scope::CompileInternal\n");
         }
 
         void Scope::AddQueryPoolUse(RHI::Ptr<RHI::QueryPool> queryPool, const RHI::Interval& interval, RHI::ScopeAttachmentAccess access)

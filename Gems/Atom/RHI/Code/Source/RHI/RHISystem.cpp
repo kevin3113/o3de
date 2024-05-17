@@ -23,6 +23,8 @@
 
 AZ_DEFINE_BUDGET(RHI);
 
+int g_rhi_sys_tick = 0;
+
 namespace AZ::RHI
 {
     RHISystemInterface* RHISystemInterface::Get()
@@ -123,6 +125,7 @@ namespace AZ::RHI
         else
         {
             AZStd::string preferredUserAdapterName = RHI::GetCommandLineValue("forceAdapter");
+            //AZStd::string preferredUserAdapterName = "Intel";
             AZStd::to_lower(preferredUserAdapterName.begin(), preferredUserAdapterName.end());
             bool findPreferredUserDevice = preferredUserAdapterName.size() > 0;
 
@@ -229,6 +232,7 @@ namespace AZ::RHI
 
     void RHISystem::FrameUpdate(FrameGraphCallback frameGraphCallback)
     {
+        printf("RHISystem FrameUpdate enter tick %d!\n", g_rhi_sys_tick);
         AZ_PROFILE_SCOPE(RHI, "RHISystem: FrameUpdate");
         {
             AZ_PROFILE_SCOPE(RHI, "main per-frame work");
@@ -258,6 +262,8 @@ namespace AZ::RHI
         }
 
         m_frameScheduler.EndFrame();
+        printf("RHISystem FrameUpdate leave tick %d!\n", g_rhi_sys_tick);
+        g_rhi_sys_tick++;
     }
 
     AZStd::optional<int> RHISystem::AddVirtualDevice(int deviceIndexToVirtualize)

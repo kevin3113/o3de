@@ -218,7 +218,7 @@
             "description": "configuration: profile",
             "hidden": true,
             "configurePreset": "default",
-            "configuration": "profile"
+            "configuration": "release"
         },
         {
             "name": "editor",

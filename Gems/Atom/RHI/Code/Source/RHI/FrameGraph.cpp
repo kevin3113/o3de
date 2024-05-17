@@ -602,12 +602,14 @@ namespace AZ::RHI
 
             GraphNode& producerGraphNode = m_graphNodes[graphEdge.m_producerIndex];
             producerGraphNode.m_consumers.push_back(&consumer);
+            printf("+++ insert edge %s --> %s\n", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
         }
         else
         {
             // Update the edge type if needed.
             GraphEdge& edge = *findIter;
             edge.m_type = edgeType == GraphEdgeType::SameGroup ? edgeType : edge.m_type;
+            printf(">>> update edge %s --> %s\n", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
         }
     }
 }

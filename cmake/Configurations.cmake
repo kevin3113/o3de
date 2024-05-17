@@ -180,7 +180,7 @@ if(NOT _isMultiConfig)
     # No reason set CMAKE_BUILD_TYPE if it's a multiconfig generator.
     if(NOT CMAKE_BUILD_TYPE)
         message("No build type specified (CMAKE_BUILD_TYPE), defaulting to profile build")
-        set(CMAKE_BUILD_TYPE profile CACHE STRING "" FORCE)
+        set(CMAKE_BUILD_TYPE release CACHE STRING "" FORCE)
     endif()
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY HELPSTRING "Type of build (debug|profile|release)")
     # set options for cmake-gui

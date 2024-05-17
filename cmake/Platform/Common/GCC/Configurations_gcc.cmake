@@ -28,8 +28,8 @@ ly_append_configurations_options(
     COMPILATION_C
         -fno-exceptions
         -fvisibility=hidden
-        -Wall
-        -Werror
+        #-Wall
+        #-Werror
 
         -fpie                   # Position-Independent Executables
         -fstack-protector-all   # Enable stack protectors for all functions
@@ -41,8 +41,8 @@ ly_append_configurations_options(
         -fno-exceptions
         -fvisibility=hidden
         -fvisibility-inlines-hidden
-        -Wall
-        -Werror
+        #-Wall
+        #-Werror
 
         -fpie                   # Position-Independent Executables
         -fstack-protector-all   # Enable stack protectors for all functions

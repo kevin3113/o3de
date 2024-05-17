@@ -68,6 +68,7 @@ namespace AZ::RHI
     class FrameGraph final
     {
         friend class FrameGraphCompiler;
+        friend class FrameScheduler;
     public:
         AZ_CLASS_ALLOCATOR(FrameGraph, AZ::SystemAllocator);
 
@@ -224,7 +225,7 @@ namespace AZ::RHI
             AZStd::vector<Scope*> m_consumers;
             uint16_t m_unsortedProducerCount = 0;
         };
-
+    public:
         FrameGraphAttachmentDatabase m_attachmentDatabase;
         AZStd::vector<GraphEdge> m_graphEdges;
         AZStd::vector<GraphNode> m_graphNodes;

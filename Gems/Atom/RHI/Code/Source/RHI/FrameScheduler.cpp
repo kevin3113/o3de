@@ -175,7 +175,7 @@ namespace AZ::RHI
                 return RHI::ResultCode::InvalidArgument;
             }
         }
-
+        printf("ImportScopeProducer: add scope producer %s\n", scopeProducer.GetScopeId().GetCStr());
         m_scopeProducers.emplace_back(&scopeProducer);
         return ResultCode::Success;
     }
@@ -202,6 +202,10 @@ namespace AZ::RHI
         frameGraphCompileRequest.m_statisticsFlags = compileRequest.m_statisticsFlags;
 
         const MessageOutcome outcome = m_frameGraphCompiler->Compile(frameGraphCompileRequest);
+
+        printf("--- FrameScheduler::Compile After Compiler Comple node count %d edge count %d\n", 
+            (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
         if (outcome.IsSuccess())
         {
             {
@@ -217,11 +221,21 @@ namespace AZ::RHI
             // Compile all producers, which will call out to user code to invalidate any scope-specific shader resource groups.
             CompileProducers();
 
+            printf("--- FrameScheduler::Compile After CompileProducers node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
             // Compile all invalidated shader resource groups.
             CompileShaderResourceGroups();
 
+            printf("--- FrameScheduler::Compile After CompileShaderResourceGroups node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
             // Build RayTracingShaderTables
             BuildRayTracingShaderTables();
+
+            printf("--- FrameScheduler::Compile After BuildRayTracingShaderTables node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
         }
         return outcome;
     }
@@ -230,11 +244,28 @@ namespace AZ::RHI
     {
         AZ_PROFILE_SCOPE(RHI, "FrameScheduler: PrepareProducers");
 
+        printf("=> FrameScheduler::PrepareProducers Before FrameGraph node count %d edge count %d\n", 
+            (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
+        printf("FrameScheduler::PrepareProducers root scope [%s]\n", m_rootScopeId.GetCStr());
+
         for (ScopeProducer* scopeProducer : m_scopeProducers)
         {
             RHI_PROFILE_SCOPE_VERBOSE("FrameScheduler: PrepareProducers: Scope %s", scopeProducer->GetScopeId().GetCStr());
+            printf("FrameScheduler::PrepareProducers cur scope [%s] root scope [%s]\n", scopeProducer->GetScopeId().GetCStr(),
+                m_rootScopeId.GetCStr());
+            //printf("+1 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
             m_frameGraph->BeginScope(*scopeProducer->GetScope());
+
+            //printf("+2 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
             scopeProducer->SetupFrameGraphDependencies(*m_frameGraph);
+
+            //printf("+3 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
                 
             // All scopes depend on the root scope.
             if (scopeProducer->GetScopeId() != m_rootScopeId)
@@ -242,9 +273,15 @@ namespace AZ::RHI
                 m_frameGraph->ExecuteAfter(m_rootScopeId);
             }
 
+            //printf("+4 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+
             m_frameGraph->EndScope();
         }
         m_frameGraph->End();
+
+        printf("<= FrameScheduler::PrepareProducers After FrameGraph node count %d edge count %d\n", 
+            (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
     }
 
     void FrameScheduler::CompileProducers()
@@ -568,6 +605,7 @@ namespace AZ::RHI
         if (overrideJobPolicy == JobPolicy::Serial ||
             platformJobPolicy == JobPolicy::Serial)
         {
+            printf("FrameScheduler::Execute in serial mode\n");
             for (uint32_t groupIndex = 0; groupIndex < groupCount; ++groupIndex)
             {
                 ExecuteGroupInternal(nullptr, groupIndex);
@@ -577,6 +615,7 @@ namespace AZ::RHI
         // Otherwise, fork a job for each group.
         else
         {
+            printf("FrameScheduler::Execute in async mode\n");
             AZ::JobCompletion jobCompletion;
             for (uint32_t groupIndex = 0; groupIndex < groupCount; ++groupIndex)
             {
