@@ -115,6 +115,7 @@ namespace AZ
             AZStd::vector<AZStd::unique_ptr<Data::AssetHandler>> m_assetHandlers;
 
             RHI::RHISystem m_rhiSystem;
+            RHI::RHISystem g_rhiSystem;
             MaterialSystem m_materialSystem;
             ModelSystem m_modelSystem;
             ShaderSystem m_shaderSystem;

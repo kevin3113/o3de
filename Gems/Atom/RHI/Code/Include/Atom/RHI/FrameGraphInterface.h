@@ -232,6 +232,12 @@ namespace AZ::RHI
             m_frameGraph.SetHardwareQueueClass(hardwareQueueClass);
         }
 
+        void GraphStat(const char *token)
+        {
+            printf("%s cur FrameGraph node count %d edge count %d\n", token,
+                (int)m_frameGraph.m_graphNodes.size(), (int)m_frameGraph.m_graphEdges.size());
+        }
+
     private:
 
         //! Reference to the underlying FrameGraph. All function calls are forwarded to this member

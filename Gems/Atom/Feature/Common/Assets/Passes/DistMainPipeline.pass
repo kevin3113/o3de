@@ -1,0 +1,137 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "DistMainPipeline",
+            "PassClass": "ParentPass",
+            "Slots": [
+                {
+                    "Name": "InputOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                }
+            ],
+            "PassData": {
+                "$type": "PassData",
+                "PipelineGlobalConnections": [
+                    {
+                        "GlobalName": "PipelineOutput",
+                        "Slot": "InputOutput"
+                    }
+                ]
+            },
+            "ImageAttachments": [
+                {
+                    "Name": "DistInput",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "InputOutput"
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R16G16_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "InputOutput",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "DistInput"
+                    }
+                }
+            ],
+            "PassRequests": [
+                {
+                    "Name": "Split",
+                    "TemplateName": "DistPassTemplate",
+                    "Enabled": true,
+                    "Connections": [
+                        {
+                            "LocalSlot": "Input",
+                            "AttachmentRef": {
+                                "Pass": "Parent",
+                                "Attachment": "InputOutput"
+                            }
+                        },
+                        {
+                            "LocalSlot": "Output",
+                            "AttachmentRef": {
+                                "Pass": "This",
+                                "Attachment": "DistOutput"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "Name": "SendToAll",
+                    "TemplateName": "DistPassTemplate",
+                    "Enabled": true,
+                    "Connections": [
+                        {
+                            "LocalSlot": "Input",
+                            "AttachmentRef": {
+                                "Pass": "Split",
+                                "Attachment": "Output"
+                            }
+                        },
+                        {
+                            "LocalSlot": "Output",
+                            "AttachmentRef": {
+                                "Pass": "This",
+                                "Attachment": "DistOutput"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "Name": "WaitForAll",
+                    "TemplateName": "DistPassTemplate",
+                    "Enabled": true,
+                    "Connections": [
+                        {
+                            "LocalSlot": "Input",
+                            "AttachmentRef": {
+                                "Pass": "SendToAll",
+                                "Attachment": "Output"
+                            }
+                        },
+                        {
+                            "LocalSlot": "Output",
+                            "AttachmentRef": {
+                                "Pass": "This",
+                                "Attachment": "DistOutput"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "Name": "Merge",
+                    "TemplateName": "DistPassTemplate",
+                    "Enabled": true,
+                    "Connections": [
+                        {
+                            "LocalSlot": "Input",
+                            "AttachmentRef": {
+                                "Pass": "WaitForAll",
+                                "Attachment": "Output"
+                            }
+                        },
+                        {
+                            "LocalSlot": "Output",
+                            "AttachmentRef": {
+                                "Pass": "This",
+                                "Attachment": "DistOutput"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

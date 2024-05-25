@@ -20,6 +20,26 @@
 #include <Atom/RPI.Reflect/Pass/PassName.h>
 #include <Atom/RPI.Reflect/Pass/PassRequest.h>
 
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+namespace {
+static void print_stack_ppass(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+}
+#define print_stack print_stack_ppass
+
 namespace AZ
 {
     namespace RPI
@@ -27,6 +47,8 @@ namespace AZ
         Ptr<ParentPass> ParentPass::Create(const PassDescriptor& descriptor)
         {
             Ptr<ParentPass> pass = aznew ParentPass(descriptor);
+            printf("Parent Pass Create [%s]\n", descriptor.m_passName.GetCStr());
+            //print_stack();
             return pass;
         }
 
@@ -34,6 +56,8 @@ namespace AZ
         {
             PassDescriptor desc = GetPassDescriptor();
             Ptr<ParentPass> pass = aznew ParentPass(desc);
+            printf("Parent Pass Recreate [%s]\n", desc.m_passName.GetCStr());
+            //print_stack();
             return pass;
         }
 
@@ -41,6 +65,8 @@ namespace AZ
             : Pass(descriptor)
         {
             m_flags.m_createChildren = true;
+            printf("Parent Pass Construct [%s]\n", descriptor.m_passName.GetCStr());
+            //print_stack();
         }
 
         ParentPass::~ParentPass()
@@ -69,6 +95,9 @@ namespace AZ
             child->m_parentChildIndex = static_cast<uint32_t>(m_children.size());
             m_children.push_back(child);
             OnChildAdded(child);
+
+            printf("Parent Pass [%s] add child [%s]\n", GetName().GetCStr(), child->GetName().GetCStr());
+            //print_stack();
         }
 
         bool ParentPass::InsertChild(const Ptr<Pass>& child, ChildPassIndex position)
@@ -103,6 +132,9 @@ namespace AZ
             {
                 m_children[index]->m_parentChildIndex = index;
             }
+
+            printf("Parent Pass [%s] insert child [%s]\n", GetName().GetCStr(), child->GetName().GetCStr());
+            //print_stack();
 
             return true;
         }
@@ -168,6 +200,9 @@ namespace AZ
             {
                 m_pipeline->MarkPipelinePassChanges(PipelinePassChanges::PassesRemoved);
             }
+
+            printf("Parent Pass [%s] remove child [%s]\n", GetName().GetCStr(), pass->GetName().GetCStr());
+            //print_stack();
         }
 
         void ParentPass::RemoveChildren([[maybe_unused]] bool calledFromDestructor)
@@ -179,7 +214,9 @@ namespace AZ
             for (auto child : m_children)
             {
                 child->OnOrphan();
+                printf("Parent Pass [%s] remove children [%s]\n", GetName().GetCStr(), child->GetName().GetCStr());
             }
+            //print_stack();
             m_children.clear();
 
             // Notify pipeline
@@ -428,6 +465,16 @@ namespace AZ
 
         void ParentPass::SetRenderPipeline(RenderPipeline* pipeline)
         {
+            char *name = (char *)"nullptr";
+
+            printf("SetRenderPipeline pass [%s] pipelinePtr [%p]\n", GetName().GetCStr(), pipeline);
+
+            if (pipeline != nullptr)
+                name = (char *)pipeline->GetId().GetCStr();
+            printf("SetRenderPipeline pass [%s] pipeline [%s]\n", GetName().GetCStr(), name);
+
+            //print_stack();
+            
             if (m_pipeline == pipeline)
             {
                 return;
@@ -439,6 +486,8 @@ namespace AZ
             // Set render pipeline on children
             for (const auto& child : m_children)
             {
+                printf("Child SetRenderPipeline pass [%s] pipeline [%s]\n",
+                    child->GetName().GetCStr(), name);
                 child->SetRenderPipeline(pipeline);
             }
         }

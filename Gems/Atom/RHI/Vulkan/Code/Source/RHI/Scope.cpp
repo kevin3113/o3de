@@ -28,7 +28,7 @@
 #include <RHI/BufferView.h>
 
 #include <execinfo.h>
-void print_stack(void)
+void static print_stack(void)
 {
     void *stack[32];
     char **msg;
@@ -371,7 +371,7 @@ namespace AZ
             m_deviceSupportedPipelineStageFlags = device.GetCommandQueueContext().GetCommandQueue(GetHardwareQueueClass()).GetSupportedPipelineStages();
 
             RHI::FrameEventBus::Handler::BusConnect(&deviceBase);
-            printf("Vulkan Scope::CompileInternal\n");
+            printf("Vulkan Scope::CompileInternal %s\n", GetId().GetCStr());
         }
 
         void Scope::AddQueryPoolUse(RHI::Ptr<RHI::QueryPool> queryPool, const RHI::Interval& interval, RHI::ScopeAttachmentAccess access)

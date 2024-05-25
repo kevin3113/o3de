@@ -267,13 +267,17 @@ namespace AZ
             m_slotType = slot.m_slotType;
             m_scopeAttachmentUsage = slot.m_scopeAttachmentUsage;
 
+            printf("PassAttachmentBinding slot name [%s] type %d\n", m_name.GetCStr(), (int)m_slotType);
+
             m_unifiedScopeDesc.m_loadStoreAction = slot.m_loadStoreAction;
             if (slot.m_imageViewDesc != nullptr)
             {
+                printf("PassAttachmentBinding add image id %s\n", m_unifiedScopeDesc.m_attachmentId.GetCStr());
                 m_unifiedScopeDesc.SetAsImage(*slot.m_imageViewDesc);
             }
             else if (slot.m_bufferViewDesc != nullptr)
             {
+                printf("PassAttachmentBinding add buffer id %s\n", m_unifiedScopeDesc.m_attachmentId.GetCStr());
                 m_unifiedScopeDesc.SetAsBuffer(*slot.m_bufferViewDesc);
             }
 
@@ -320,11 +324,17 @@ namespace AZ
             m_attachment = attachment;
             m_unifiedScopeDesc.m_attachmentId = attachment->GetAttachmentId();
 
+            printf("SetAttachment m_unifiedScopeDesc type %d id %s\n",
+                (int)m_unifiedScopeDesc.GetType(),
+                m_unifiedScopeDesc.m_attachmentId.GetCStr());
+
             // setup scope descriptors for transient attachments if they weren't set in slot
             if (m_unifiedScopeDesc.GetType() == RHI::AttachmentType::Uninitialized)
             {
+                printf("SetAttachment attachment->m_lifetime is %d\n", (int)attachment->m_lifetime);
                 if (attachment->m_lifetime == RHI::AttachmentLifetimeType::Transient)
                 {
+                    printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
                     if (attachment->GetAttachmentType() == RHI::AttachmentType::Buffer)
                     {
                         // AZ_Assert(false, "Transient buffer's buffer view need to be set in slot");
@@ -337,8 +347,10 @@ namespace AZ
                 }
                 else if (attachment->m_lifetime == RHI::AttachmentLifetimeType::Imported)
                 {
+                    printf("SetAttachment attachment->m_importedResource is %p\n", attachment->m_importedResource);
                     if (attachment->m_importedResource)
                     {
+                        printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
                         if (attachment->GetAttachmentType() == RHI::AttachmentType::Buffer)
                         {
                             Buffer* buffer = static_cast<Buffer*>(attachment->m_importedResource.get());
@@ -372,6 +384,9 @@ namespace AZ
         {
             Ptr<PassAttachment> targetAttachment = nullptr;
 
+            printf("UpdateConnection useFallback %d m_fallbackBinding %p m_slotType %d m_connectedBinding %p orig att %p\n",
+                (int)useFallback, m_fallbackBinding, (int)m_slotType, m_connectedBinding, m_originalAttachment);
+
             // Use the fallback binding if:
             // - the calling pass specifies to use it
             // - fallback binding is setup
@@ -392,6 +407,12 @@ namespace AZ
             if (targetAttachment == nullptr ||
                 (targetAttachment == m_attachment && m_attachment->GetAttachmentId() == m_unifiedScopeDesc.m_attachmentId))
             {
+                if (targetAttachment)
+                    printf("UpdateConnection targetAttachment self [%p] id %s target [%p] unifid %s\n",
+                        m_attachment.get(), m_attachment->GetAttachmentId().GetCStr(), targetAttachment.get(),
+                        m_unifiedScopeDesc.m_attachmentId.GetCStr());
+                else
+                    printf("UpdateConnection targetAttachment is nullptr\n");
                 return;
             }
 

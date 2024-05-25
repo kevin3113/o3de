@@ -14,6 +14,24 @@
 #include <RHI/Fence.h>
 #include <RHI/Queue.h>
 
+
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+void static print_stack(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+
 namespace AZ
 {
     namespace Vulkan
@@ -42,6 +60,10 @@ namespace AZ
             const AZStd::vector<RHI::Ptr<Fence>>& fencesToWaitFor,
             Fence* fenceToSignal)
         {
+            printf("Queue::SubmitCommandBuffers cmdBufs %d, wait %d, signal %d, fence %d thread %d\n",
+                (int)commandBuffers.size(), (int)waitSemaphoresInfo.size(), (int)semaphoresToSignal.size(),
+                (int)fencesToWaitFor.size(), (int)gettid());
+            //print_stack();
             AZStd::vector<VkCommandBuffer> vkCommandBuffers;
             AZStd::vector<VkSemaphore> vkWaitSemaphoreVector; // vulkan.h has a #define called vkWaitSemaphores, so we name this differently
             AZStd::vector<VkPipelineStageFlags> vkWaitPipelineStages;

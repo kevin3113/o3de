@@ -20,6 +20,9 @@
 #include <Atom/RPI.Reflect/Pass/ComputePassData.h>
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
 
+#undef AZ_Error
+#define AZ_Error(comp, expr, ...) printf("AZ_Error: " comp " " __VA_ARGS__); printf("\n")
+
 namespace AZ
 {
     namespace RPI
@@ -358,14 +361,18 @@ namespace AZ
 
         bool PassLibrary::LoadPassAsset(const Name& name, const Data::AssetId& passAssetId)
         {
+                char buf[256];
+                passAssetId.m_guid.ToString(buf, 256);
             Data::Asset<PassAsset> passAsset;
             if (passAssetId.IsValid())
             {
+                printf("PassLibrary::LoadPassAsset %s valid\n", buf);
                 passAsset = Data::AssetManager::Instance().GetAsset<RPI::PassAsset>(passAssetId, AZ::Data::AssetLoadBehavior::PreLoad);
                 passAsset.BlockUntilLoadComplete();
             }
 
             bool loadSuccess = LoadPassAsset(name, passAsset);
+            printf("PassLibrary::LoadPassAsset %s load success %d\n", buf, (int)loadSuccess);
 
             if (loadSuccess)
             {
@@ -410,6 +417,7 @@ namespace AZ
                 for (const auto& assetInfo : assetMapping)
                 {
                     Name templateName = AZ::Name(assetInfo.first);
+                    printf("LoadPassTemplateMappings for [%s]\n", templateName.GetCStr());
                     if (!HasTemplate(templateName))
                     {
                         bool loaded = LoadPassAsset(templateName, assetInfo.second);

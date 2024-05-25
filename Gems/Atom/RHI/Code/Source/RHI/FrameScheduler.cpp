@@ -31,6 +31,40 @@
 #include <AzCore/Task/TaskGraph.h>
 #include <AzCore/std/time.h>
 
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <dlfcn.h>
+void print_symbol_name(void *addr)
+{
+    Dl_info info;
+    int ret = dladdr(addr, &info);
+    if (ret == 0) {
+        printf("addr %p cannot be located!\n", addr);
+    }
+    printf("== addr %p from shared lib %s symbol name is [%s]\n", addr,
+        info.dli_fname, info.dli_sname);
+}
+
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+void static print_stack(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+
+
 namespace AZ::RHI
 {
     static constexpr const char* frameTimeMetricName = "Frame to Frame Time";
@@ -176,6 +210,7 @@ namespace AZ::RHI
             }
         }
         printf("ImportScopeProducer: add scope producer %s\n", scopeProducer.GetScopeId().GetCStr());
+        //print_stack();
         m_scopeProducers.emplace_back(&scopeProducer);
         return ResultCode::Success;
     }
@@ -254,18 +289,20 @@ namespace AZ::RHI
             RHI_PROFILE_SCOPE_VERBOSE("FrameScheduler: PrepareProducers: Scope %s", scopeProducer->GetScopeId().GetCStr());
             printf("FrameScheduler::PrepareProducers cur scope [%s] root scope [%s]\n", scopeProducer->GetScopeId().GetCStr(),
                 m_rootScopeId.GetCStr());
-            //printf("+1 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
-            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+            printf("+1 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
 
             m_frameGraph->BeginScope(*scopeProducer->GetScope());
 
-            //printf("+2 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
-            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+            printf("+2 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
 
             scopeProducer->SetupFrameGraphDependencies(*m_frameGraph);
+            //void (*func)(FrameGraphInterface) = scopeProducer->SetupFrameGraphDependencies;
+            //print_symbol_name((void *)&scopeProducer->SetupFrameGraphDependencies);
 
-            //printf("+3 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
-            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+            printf("+3 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
                 
             // All scopes depend on the root scope.
             if (scopeProducer->GetScopeId() != m_rootScopeId)
@@ -273,8 +310,8 @@ namespace AZ::RHI
                 m_frameGraph->ExecuteAfter(m_rootScopeId);
             }
 
-            //printf("+4 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
-            //    (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
+            printf("+4 FrameScheduler::PrepareProducers cur FrameGraph node count %d edge count %d\n", 
+                (int)m_frameGraph->m_graphNodes.size(), (int)m_frameGraph->m_graphEdges.size());
 
             m_frameGraph->EndScope();
         }
@@ -532,6 +569,9 @@ namespace AZ::RHI
 
             AZ_PROFILE_SCOPE(RHI, "ScopeProducer: %s", scopeProducer->GetScopeId().GetCStr());
 
+            printf(">>> ExecuteContextInternal ScopeProducer: %s index %d thread %d\n",
+                scopeProducer->GetScopeId().GetCStr(), (int)index, (int)gettid());
+
             if (executeContext->GetCommandList())
             {
                 // reset the submit count in preparation for the scope submits
@@ -563,10 +603,14 @@ namespace AZ::RHI
         const bool isSerialPolicy = executeGroup->GetJobPolicy() == JobPolicy::Serial;
         const bool isSerialExecute = parentJob == nullptr || contextCount == 1 || isSerialPolicy;
 
+        printf("ExecuteGroupInternal parent job %p context count %u serial %d\n",
+            parentJob, contextCount, (int)isSerialPolicy);
+
         if (isSerialExecute)
         {
             for (uint32_t i = 0; i < contextCount; ++i)
             {
+                printf("ExecuteContextInternal group %u thread id is %d\n", groupIndex, (int)gettid());
                 ExecuteContextInternal(*executeGroup, i);
             }
         }
@@ -578,6 +622,7 @@ namespace AZ::RHI
             {
                 const auto jobLambda = [this, executeGroup, i]()
                 {
+                    printf("ExecuteContextInternal thread id is %d\n", (int)gettid());
                     ExecuteContextInternal(*executeGroup, i);
                 };
 
@@ -621,6 +666,7 @@ namespace AZ::RHI
             {
                 const auto jobLambda = [this, groupIndex](AZ::Job& owner)
                 {
+                    printf("ExecuteGroupInternal group id %u thread id is %d\n", groupIndex, (int)gettid());
                     ExecuteGroupInternal(&owner, groupIndex);
                 };
 

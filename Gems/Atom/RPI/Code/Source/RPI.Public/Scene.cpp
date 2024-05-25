@@ -361,6 +361,7 @@ namespace AZ
             pipeline->SetDrawFilterTags(m_drawFilterTagRegistry.get());
 
             m_pipelines.push_back(pipeline);
+            printf("== Scene %s AddRenderPipeline %s\n", m_name.GetCStr(), pipeline->GetDescriptor().m_name.c_str());
 
             // Set this pipeline as default if the default pipeline was empty. This pipeline should be the first pipeline be added to the scene
             if (m_defaultPipeline == nullptr)
@@ -400,6 +401,9 @@ namespace AZ
                     pipelineToRemove->ReleaseDrawFilterTags(m_drawFilterTagRegistry.get());
 
                     pipelineToRemove->OnRemovedFromScene(this);
+
+                    printf("== Scene %s RemoveRenderPipeline %s\n", m_name.GetCStr(), (*it)->GetDescriptor().m_name.c_str());
+
                     m_pipelines.erase(it);
                     
                     SceneNotificationBus::Event(m_id, &SceneNotification::OnRenderPipelineRemoved, pipelineToRemove.get());
@@ -710,6 +714,7 @@ namespace AZ
         void Scene::PrepareRender(RHI::JobPolicy jobPolicy, float simulationTime)
         {
             AZ_PROFILE_SCOPE(RPI, "Scene: PrepareRender");
+            printf("--> Scene %s PrepareRender begin\n", m_name.GetCStr());
 
             if (!m_activated)
             {
@@ -733,6 +738,7 @@ namespace AZ
             // Get active pipelines which need to be rendered and notify them frame started
             AZStd::vector<RenderPipelinePtr> activePipelines;
             {
+                printf("--> Scene %s PrepareRenderPipelines\n", m_name.GetCStr());
                 AZ_PROFILE_SCOPE(RPI, "Scene: OnStartFrame");
                 for (auto& pipeline : m_pipelines)
                 {
@@ -740,6 +746,11 @@ namespace AZ
                     {
                         activePipelines.push_back(pipeline);
                         pipeline->OnStartFrame(simulationTime);
+                        printf("## pipeline %s prepare to render!\n", pipeline->GetDescriptor().m_name.c_str());
+                    }
+                    else
+                    {
+                        printf("## pipeline %s no need to render!\n", pipeline->GetDescriptor().m_name.c_str());
                     }
                 }
             }
@@ -768,6 +779,7 @@ namespace AZ
 
             {
                 AZ_PROFILE_SCOPE(RPI, "Setup Views");
+                printf("--> Scene %s PrepareViews\n", m_name.GetCStr());
 
                 // Collect persistent views from all pipelines to be rendered
                 AZStd::map<ViewPtr, RHI::DrawListMask> persistentViews; 
@@ -782,6 +794,7 @@ namespace AZ
                     viewInfo.first->SetDrawListMask(viewInfo.second);
                     m_renderPacket.m_views.push_back(viewInfo.first);
                     m_renderPacket.m_drawListMask |= viewInfo.second;
+                    printf("persistentViews %s is saved!\n", viewInfo.first->GetName().GetCStr());
                 }
             
                 // Collect transient views from each feature processor
@@ -802,11 +815,13 @@ namespace AZ
                     {
                         itr->AddTransientView(view.first, view.second);
                     }
+                    printf("transientViews %s is saved!\n", view.second->GetName().GetCStr());
                 }
             }
 
             {
 
+                printf("--> Scene %s PrepareRenderPackets begin\n", m_name.GetCStr());
                 if (m_taskGraphActive)
                 {
                     CollectDrawPacketsTaskGraph();
@@ -869,6 +884,7 @@ namespace AZ
                 AZ_PROFILE_SCOPE(RPI, "Scene OnEndPrepareRender");
                 SceneNotificationBus::Event(GetId(), &SceneNotification::OnEndPrepareRender);
             }
+            printf("--> Scene %s PrepareRender end\n", m_name.GetCStr());
         }
 
         void Scene::OnFrameEnd()

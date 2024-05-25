@@ -118,6 +118,7 @@ namespace AZ::RHI
         }
 
         const size_t heapOffsetInBytes = address.m_ptr;
+        printf("*** ActivateBuffer offset %zu scope %s\n", heapOffsetInBytes, scope.GetId().GetCStr());
         m_heapStats.m_watermarkSize = AZStd::max(m_heapStats.m_watermarkSize, heapOffsetInBytes + static_cast<size_t>(memRequirements.m_sizeInBytes));
 
         Buffer* buffer = nullptr;
@@ -223,6 +224,12 @@ namespace AZ::RHI
         }
             
         const VirtualAddress heapAddress{attachment.m_heapOffsetMin};
+        char *type_cstr;
+        if (type == AliasedResourceType::Image)
+            type_cstr = "Image";
+        else
+            type_cstr = "Buffer";
+        printf("*** Deactivate%s offset %zu scope %s\n", type_cstr, (size_t)heapAddress.m_ptr, scope.GetId().GetCStr());
         m_firstFitAllocator.DeAllocate(heapAddress);
         m_firstFitAllocator.GarbageCollectForce();
         m_activeAttachmentLookup.erase(findIter);
@@ -239,6 +246,7 @@ namespace AZ::RHI
         }
 
         const size_t heapOffsetInBytes = address.m_ptr;
+        printf("*** ActivateImage offset %zu scope %s\n", heapOffsetInBytes, scope.GetId().GetCStr());
         m_heapStats.m_watermarkSize = AZStd::max(m_heapStats.m_watermarkSize, heapOffsetInBytes + static_cast<size_t>(memRequirements.m_sizeInBytes));
 
         Image* image = nullptr;

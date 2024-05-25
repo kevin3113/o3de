@@ -38,6 +38,27 @@
 #include <Atom/RPI.Reflect/Pass/PassName.h>
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
 
+
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+namespace {
+static void print_stack_pass(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+}
+#define print_stack print_stack_pass
+
 namespace AZ
 {
     namespace RPI
@@ -218,6 +239,16 @@ namespace AZ
             // Add the binding. This will assert if the fixed size array is full.
             m_attachmentBindings.push_back(attachmentBinding);
 
+            printf("AddAttachmentBinding pass [%s] attach [%s] type [%d]\n",
+                GetName().GetCStr(), attachmentBinding.m_name.GetCStr(), (int)attachmentBinding.m_slotType);
+            if (attachmentBinding.m_connectedBinding && attachmentBinding.m_connectedBinding->GetAttachment())
+                printf("AddAttachmentBinding pass [%s] attach name [%s] path [%s] pass [%s]\n",
+                    GetName().GetCStr(),
+                    attachmentBinding.m_connectedBinding->GetAttachment()->m_name.GetCStr(),
+                    attachmentBinding.m_connectedBinding->GetAttachment()->m_path.GetCStr(),
+                    attachmentBinding.m_connectedBinding->GetAttachment()->m_ownerPass->GetName().GetCStr());
+            //print_stack();
+
             // Add the index of the binding to the input, output or input/output list based on the slot type
             switch (attachmentBinding.m_slotType)
             {
@@ -353,8 +384,13 @@ namespace AZ
         {
             if (m_template)
             {
+                printf("CreateBindingsFromTemplate template [%s] class [%s]\n",
+                    m_template->m_name.GetCStr(), m_template->m_passClass.GetCStr());
                 for (const PassSlot& slot : m_template->m_slots)
                 {
+                    printf("CreateBindingsFromTemplate pass [%s] slot [%s] input [%s] type [%d]\n",
+                        GetName().GetCStr(), slot.m_name.GetCStr(), slot.m_shaderInputName.GetCStr(),
+                        (int)slot.m_slotType);
                     PassAttachmentBinding binding(slot);
                     AddAttachmentBinding(binding);
                 }
@@ -451,6 +487,8 @@ namespace AZ
             PassAttachmentBinding* localBinding = FindAttachmentBinding(connection.m_localSlot);
             if (!localBinding)
             {
+                printf("localBinding pass [%s] failed to find local slot [%s]\n",
+                    GetName().GetCStr(), connection.m_localSlot.GetCStr());
                 AZ_RPI_PASS_ERROR(false, "%s: failed to find Local Slot.", prefix().c_str());
                 return;
             }
@@ -459,6 +497,9 @@ namespace AZ
             uint32_t bindingMask = (1 << uint32_t(localBinding->m_slotType));
             if (!(bindingMask & slotTypeMask))
             {
+                printf("check bind mask pass [%s] local slot [%s] not match [%d,%d]\n",
+                    GetName().GetCStr(), connection.m_localSlot.GetCStr(),
+                    (int)bindingMask, (int)slotTypeMask);
                 return;
             }
 
@@ -478,6 +519,8 @@ namespace AZ
                 foundPass = true;
                 attachment = FindOwnedAttachment(connectedSlotName);
 
+                printf("Conntect pass [%s] is This atta %p\n", GetName().GetCStr(), attachment.get());
+
                 AZ_RPI_PASS_ERROR(
                     attachment, "%s: Current Pass doesn't own an attachment named [%s].", prefix().c_str(), connectedSlotName.GetCStr());
             }
@@ -489,6 +532,8 @@ namespace AZ
                 AZ_RPI_PASS_ERROR(m_pipeline != nullptr, "%s: Pass doesn't have a valid pipeline pointer.", prefix().c_str());
 
                 foundPass = true;   // Using the "Pipeline" keyword, no need to continue searching for passes
+
+                printf("Conntect pass [%s] is PipelineGlobal\n", GetName().GetCStr());
 
                 if (m_pipeline)
                 {
@@ -511,17 +556,21 @@ namespace AZ
             {
                 if (connectedPassName == PassNameParent)
                 {
+                    printf("Conntect pass [%s] is parent\n", GetName().GetCStr());
                     foundPass = true;
                     connectedBinding = m_parent->FindAttachmentBinding(connectedSlotName);
                     if (!connectedBinding)
                     {
                         attachment = m_parent->FindOwnedAttachment(connectedSlotName);
+                        printf("connectedBinding of parent pass [%s] got nullptr\n", GetName().GetCStr());
                     }
                     else
                     {
                         slotTypeMismatch = connectedBinding->m_slotType != localBinding->m_slotType &&
                             connectedBinding->m_slotType != PassSlotType::InputOutput &&
                             localBinding->m_slotType != PassSlotType::InputOutput;
+                        printf("connectedBinding of parent pass [%s] not match [%d, %d]\n", GetName().GetCStr(),
+                            (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
                     }
                 }
                 else
@@ -530,13 +579,19 @@ namespace AZ
                     Ptr<Pass> siblingPass = m_parent->FindChildPass(connectedPassName);
                     if (siblingPass)
                     {
+                        printf("attachment of child pass [%s] find [%s]\n", GetName().GetCStr(),
+                            siblingPass->GetName().GetCStr());
                         foundPass = true;
                         connectedBinding = siblingPass->FindAttachmentBinding(connectedSlotName);
 
                         slotTypeMismatch = connectedBinding != nullptr &&
                             connectedBinding->m_slotType == localBinding->m_slotType &&
                             connectedBinding->m_slotType != PassSlotType::InputOutput;
+                        if (connectedBinding)
+                            printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
+                                (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
                     }
+                    printf("attachment of child pass [%s] find [%p]\n", GetName().GetCStr(), siblingPass);
                 }
             }
 
@@ -551,10 +606,16 @@ namespace AZ
                     foundPass = true;
                     connectedBinding = childPass->FindAttachmentBinding(connectedSlotName);
 
+                    printf("attachment of self child pass [%s] find [%s]\n", GetName().GetCStr(),
+                            childPass->GetName().GetCStr());
+
                     slotTypeMismatch = connectedBinding != nullptr &&
                         connectedBinding->m_slotType != localBinding->m_slotType &&
                         connectedBinding->m_slotType != PassSlotType::InputOutput &&
                         localBinding->m_slotType != PassSlotType::InputOutput;
+                    if (connectedBinding)
+                            printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
+                                (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
 
                 }
             }
@@ -573,16 +634,19 @@ namespace AZ
 
             if (connectedBinding)
             {
+                printf("connectedBinding check pass [%s] not null\n", GetName().GetCStr());
                 localBinding->m_connectedBinding = connectedBinding;
                 UpdateConnectedBinding(*localBinding);
 
             }
             else if (attachment)
             {
+                printf("attachment check pass [%s] not null\n", GetName().GetCStr());
                 localBinding->SetOriginalAttachment(attachment);
             }
             else
             {
+                printf("connections check pass [%s] failed\n", GetName().GetCStr());
                 if (!m_flags.m_partOfHierarchy)
                 {
                     // [GFX TODO][ATOM-13693]: REMOVE POST R1 - passes not in hierarchy should no longer have this function called
@@ -763,11 +827,15 @@ namespace AZ
 
         void Pass::SetupInputsFromRequest()
         {
+            printf("Pass::SetupInputsFromRequest pass [%s]\n", GetName().GetCStr());
             if (m_flags.m_createdByPassRequest)
             {
                 const uint32_t slotTypeMask = (1 << uint32_t(PassSlotType::Input)) | (1 << uint32_t(PassSlotType::InputOutput));
                 for (const PassConnection& connection : m_request.m_connections)
                 {
+                    printf("input ProcessConnection slot [%s] atta [%s,%s]\n",
+                        connection.m_localSlot.GetCStr(), connection.m_attachmentRef.m_pass.GetCStr(),
+                        connection.m_attachmentRef.m_attachment.GetCStr());
                     ProcessConnection(connection, slotTypeMask);
                 }
             }
@@ -775,11 +843,15 @@ namespace AZ
 
         void Pass::SetupOutputsFromRequest()
         {
+            printf("Pass::SetupOutputsFromRequest pass [%s]\n", GetName().GetCStr());
             if (m_flags.m_createdByPassRequest)
             {
                 const uint32_t slotTypeMask = (1 << uint32_t(PassSlotType::Output));
                 for (const PassConnection& connection : m_request.m_connections)
                 {
+                    printf("output ProcessConnection slot [%s] atta [%s,%s]\n",
+                        connection.m_localSlot.GetCStr(), connection.m_attachmentRef.m_pass.GetCStr(),
+                        connection.m_attachmentRef.m_attachment.GetCStr());
                     ProcessConnection(connection, slotTypeMask);
                 }
             }
@@ -787,6 +859,7 @@ namespace AZ
 
         void Pass::SetupPassDependencies()
         {
+            printf("Pass::SetupPassDependencies pass [%s]\n", GetName().GetCStr());
             // Get dependencies declared in the PassRequest
             if (m_flags.m_createdByPassRequest)
             {
@@ -795,6 +868,8 @@ namespace AZ
                     Ptr<Pass> executeAfterPass = FindAdjacentPass(passName);
                     if (executeAfterPass != nullptr)
                     {
+                        printf("Pass::SetupPassDependencies cur pass [%s] from request prev [%s]\n",
+                            GetName().GetCStr(), executeAfterPass->GetName().GetCStr());
                         m_executeAfterPasses.push_back(executeAfterPass.get());
                     }
                 }
@@ -803,6 +878,8 @@ namespace AZ
                     Ptr<Pass> executeBeforePass = FindAdjacentPass(passName);
                     if (executeBeforePass != nullptr)
                     {
+                        printf("Pass::SetupPassDependencies cur pass [%s] from request next [%s]\n",
+                            GetName().GetCStr(), executeBeforePass->GetName().GetCStr());
                         m_executeBeforePasses.push_back(executeBeforePass.get());
                     }
                 }
@@ -812,10 +889,14 @@ namespace AZ
             {
                 for (Pass* pass : m_parent->m_executeAfterPasses)
                 {
+                    printf("Pass::SetupPassDependencies cur pass [%s] from parent prev [%s]\n",
+                            GetName().GetCStr(), pass->GetName().GetCStr());
                     m_executeAfterPasses.push_back(pass);
                 }
                 for (Pass* pass : m_parent->m_executeBeforePasses)
                 {
+                    printf("Pass::SetupPassDependencies cur pass [%s] from parent next [%s]\n",
+                            GetName().GetCStr(), pass->GetName().GetCStr());
                     m_executeBeforePasses.push_back(pass);
                 }
             }
@@ -823,11 +904,17 @@ namespace AZ
 
         void Pass::SetupInputsFromTemplate()
         {
+            printf("SetupInputsFromTemplate pass [%s]\n", GetName().GetCStr());
             if (m_template)
             {
+                printf("SetupInputsFromTemplate pass [%s] template [%s]\n", GetName().GetCStr(), m_template->m_name.GetCStr());
                 const uint32_t slotTypeMask = (1 << uint32_t(PassSlotType::Input)) | (1 << uint32_t(PassSlotType::InputOutput));
                 for (const PassConnection& outputConnection : m_template->m_connections)
                 {
+                    printf("SetupInputsFromTemplate ProcessConnection slot [%s] pass [%s] atta [%s]\n",
+                        outputConnection.m_localSlot.GetCStr(),
+                        outputConnection.m_attachmentRef.m_pass.GetCStr(),
+                        outputConnection.m_attachmentRef.m_attachment.GetCStr());
                     ProcessConnection(outputConnection, slotTypeMask);
                 }
             }
@@ -835,15 +922,22 @@ namespace AZ
 
         void Pass::SetupOutputsFromTemplate()
         {
+            printf("SetupOutputsFromTemplate pass [%s]\n", GetName().GetCStr());
             if (m_template)
             {
+                printf("SetupOutputsFromTemplate pass [%s] template [%s]\n", GetName().GetCStr(), m_template->m_name.GetCStr());
                 const uint32_t slotTypeMask = (1 << uint32_t(PassSlotType::Output));
                 for (const PassConnection& outputConnection : m_template->m_connections)
                 {
+                    printf("SetupInputsFromTemplate ProcessConnection slot [%s] pass [%s] atta [%s]\n",
+                        outputConnection.m_localSlot.GetCStr(),
+                        outputConnection.m_attachmentRef.m_pass.GetCStr(),
+                        outputConnection.m_attachmentRef.m_attachment.GetCStr());
                     ProcessConnection(outputConnection, slotTypeMask);
                 }
                 for (const PassFallbackConnection& fallbackConnection : m_template->m_fallbackConnections)
                 {
+                    printf("SetupInputsFromTemplate PassFallbackConnection\n");
                     ProcessFallbackConnection(fallbackConnection);
                 }
             }
@@ -907,9 +1001,13 @@ namespace AZ
                     switch (attachment->m_descriptor.m_type)
                     {
                     case RHI::AttachmentType::Image:
+                        printf("CreateTransientAttachments pass [%s] create image id %s\n",
+                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr());
                         attachmentDatabase.CreateTransientImage(attachment->GetTransientImageDescriptor());
                         break;
                     case RHI::AttachmentType::Buffer:
+                        printf("CreateTransientAttachments pass [%s] create buffer id %s\n",
+                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr());
                         attachmentDatabase.CreateTransientBuffer(attachment->GetTransientBufferDescriptor());
                         break;
                     default:
@@ -935,6 +1033,8 @@ namespace AZ
                         Image* image = static_cast<Image*>(attachment->m_importedResource.get());
                         if (currentAttachment == nullptr)
                         {
+                            printf("ImportAttachments pass [%s] import image id %s\n",
+                                GetName().GetCStr(), attachmentId.GetCStr());
                             attachmentDatabase.ImportImage(attachmentId, image->GetRHIImage());
                         }
                         else
@@ -949,6 +1049,8 @@ namespace AZ
                         Buffer* buffer = static_cast<Buffer*>(attachment->m_importedResource.get());
                         if (currentAttachment == nullptr)
                         {
+                            printf("ImportAttachments pass [%s] import buffer id %s\n",
+                                GetName().GetCStr(), attachmentId.GetCStr());
                             attachmentDatabase.ImportBuffer(attachmentId, buffer->GetRHIBuffer());
                         }
                         else
@@ -1138,6 +1240,9 @@ namespace AZ
 
             m_state = PassState::Resetting;
 
+            printf("Pass::Reset pipeline [%p] pass [%s]\n",
+                m_pipeline, GetName().GetCStr());
+
             if (m_flags.m_isPipelineRoot)
             {
                 m_pipeline->ClearGlobalBindings();
@@ -1171,6 +1276,9 @@ namespace AZ
             {
                 return;
             }
+
+            printf("Pass build for [%s]\n", GetName().GetCStr());
+            //print_stack();
 
             m_state = PassState::Building;
 

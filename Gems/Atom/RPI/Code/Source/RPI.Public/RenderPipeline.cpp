@@ -32,6 +32,11 @@ namespace AZ
             PassSystemInterface* passSystem = PassSystemInterface::Get();
             RenderPipeline* pipeline = aznew RenderPipeline();
 
+            printf("RenderPipeline::CreateRenderPipeline name [%s]\n", desc.m_name.c_str());
+            printf("RenderPipeline::CreateRenderPipeline root pass template [%s]\n", desc.m_rootPassTemplate.c_str());
+            printf("RenderPipeline::CreateRenderPipeline material tag [%s]\n", desc.m_materialPipelineTag.c_str());
+            printf("RenderPipeline::CreateRenderPipeline main view name [%s]\n", desc.m_mainViewTagName.c_str());
+
             Name passName{ desc.m_name };
             if (!desc.m_rootPassTemplate.empty())
             {
@@ -42,6 +47,7 @@ namespace AZ
 
                 Ptr<Pass> rootPass = passSystem->CreatePassFromRequest(&rootRequest);
                 pipeline->m_passTree.m_rootPass = azrtti_cast<ParentPass*>(rootPass.get());
+                printf("RenderPipeline::CreateRenderPipeline root pass ptr %p\n", rootPass.get());
             }
             else
             {
@@ -88,6 +94,13 @@ namespace AZ
         {
             RenderPipelinePtr pipeline{aznew RenderPipeline()};
             PassSystemInterface* passSystem = PassSystemInterface::Get();
+
+
+            printf("RenderPipeline::CreateRenderPipelineForWindow name [%s]\n", desc.m_name.c_str());
+            printf("RenderPipeline::CreateRenderPipelineForWindow root pass template [%s]\n", desc.m_rootPassTemplate.c_str());
+            printf("RenderPipeline::CreateRenderPipelineForWindow material tag [%s]\n", desc.m_materialPipelineTag.c_str());
+            printf("RenderPipeline::CreateRenderPipelineForWindow main view name [%s]\n", desc.m_mainViewTagName.c_str());
+
 
             PassDescriptor swapChainDescriptor(Name(desc.m_name));
             Name templateName = Name(desc.m_rootPassTemplate.c_str());
@@ -173,6 +186,7 @@ namespace AZ
             pipeline->m_materialPipelineTagName = Name{desc.m_materialPipelineTag};
             pipeline->m_activeRenderSettings = desc.m_renderSettings;
             pipeline->m_activeAAMethod = GetAAMethodByName(desc.m_defaultAAMethod);
+            printf("RenderPipeline::InitializeRenderPipeline pipeline [%s] ptr [%p]\n", pipeline->m_nameId.GetCStr(), pipeline);
             pipeline->m_passTree.m_rootPass->SetRenderPipeline(pipeline);
             pipeline->m_passTree.m_rootPass->m_flags.m_isPipelineRoot = true;
             pipeline->m_passTree.m_rootPass->ManualPipelineBuildAndInitialize();
@@ -698,10 +712,13 @@ namespace AZ
                 {
                     // Clear transient views
                     pipelineViews.m_views.clear();
+                    for (auto vptr : pipelineViews.m_views)
+                        printf("PipelineView %s is transient to clear!\n", vptr->GetName().GetCStr());
                 }
                 else if (pipelineViews.m_type == PipelineViewType::Persistent)
                 {
                     pipelineViews.m_views[0]->SetPassesByDrawList(&pipelineViews.m_passesByDrawList);
+                    printf("PipelineView %s is persistent to update!\n", pipelineViews.m_views[0]->GetName().GetCStr());
                 }
             }
             m_transientViewsByViewTag.clear();
@@ -773,11 +790,15 @@ namespace AZ
 
         void RenderPipeline::AddPipelineGlobalConnection(const Name& globalName, PassAttachmentBinding* binding, Pass* pass)
         {
+            printf("AddPipelineGlobalConnection: pipeline [%s] globalName [%s] bind [%s] pass [%s]\n",
+                GetId().GetCStr(), globalName.GetCStr(), binding->m_name.GetCStr(), pass->GetName().GetCStr());
             m_pipelineGlobalConnections.push_back(PipelineGlobalBinding{ globalName, binding, pass });
         }
 
         void RenderPipeline::RemovePipelineGlobalConnectionsFromPass(Pass* passOnwer)
         {
+            printf("RemovePipelineGlobalConnectionsFromPass: pipeline [%s] pass [%s]\n",
+                GetId().GetCStr(), passOnwer->GetName().GetCStr());
             auto iter = m_pipelineGlobalConnections.begin();
             while (iter != m_pipelineGlobalConnections.end())
             {
@@ -794,6 +815,7 @@ namespace AZ
 
         void RenderPipeline::ClearGlobalBindings()
         {
+            printf("ClearGlobalBindings: pipeline [%s]\n", GetId().GetCStr());
             m_pipelineGlobalConnections.clear();
         }
 

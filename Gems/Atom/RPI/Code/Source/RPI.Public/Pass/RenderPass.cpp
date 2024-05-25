@@ -212,9 +212,19 @@ namespace AZ
 
         void RenderPass::SetupFrameGraphDependencies(RHI::FrameGraphInterface frameGraph)
         {
+            frameGraph.GraphStat("+1 RenderPass::SetupFrameGraphDependencies");
+
             DeclareAttachmentsToFrameGraph(frameGraph);
+
+            frameGraph.GraphStat("+2 RenderPass::SetupFrameGraphDependencies");
+
             DeclarePassDependenciesToFrameGraph(frameGraph);
+
+            frameGraph.GraphStat("+3 RenderPass::SetupFrameGraphDependencies");
+
             AddScopeQueryToFrameGraph(frameGraph);
+
+            frameGraph.GraphStat("+4 RenderPass::SetupFrameGraphDependencies");
         }
 
         void RenderPass::BuildCommandList(const RHI::FrameGraphExecuteContext& context)
@@ -258,6 +268,8 @@ namespace AZ
                 RenderPass* renderPass = azrtti_cast<RenderPass*>(pass);
                 if (renderPass)
                 {
+                    printf("RenderPass::DeclarePassDependenciesToFrameGraph cur pass [%s] prev [%s]\n",
+                        GetName().GetCStr(), renderPass->GetName().GetCStr());
                     frameGraph.ExecuteAfter(renderPass->GetScopeId());
                 }
             }
@@ -266,6 +278,8 @@ namespace AZ
                 RenderPass* renderPass = azrtti_cast<RenderPass*>(pass);
                 if (renderPass)
                 {
+                    printf("RenderPass::DeclarePassDependenciesToFrameGraph cur pass [%s] next [%s]\n",
+                        GetName().GetCStr(), renderPass->GetName().GetCStr());
                     frameGraph.ExecuteBefore(renderPass->GetScopeId());
                 }
             }
@@ -377,6 +391,16 @@ namespace AZ
 
         void RenderPass::CollectSrgs()
         {
+            if (!m_pipeline) {
+                printf("RenderPass::CollectSrgs pipeline is nullptr\n");
+                exit(0);
+            }
+            if (!m_pipeline->GetScene()) {
+                printf("RenderPass::CollectSrgs pipeline  GetScene is nullptr\n");
+                exit(0);
+            }
+            printf("RenderPass::CollectSrgs pass [%s] pipline [%s] scene [%s]\n",
+                GetName().GetCStr(), m_pipeline->GetId().GetCStr(), m_pipeline->GetScene()->GetName().GetCStr());
             // Scene srg
             const RHI::ShaderResourceGroup* sceneSrg = m_pipeline->GetScene()->GetRHIShaderResourceGroup();
             BindSrg(sceneSrg);

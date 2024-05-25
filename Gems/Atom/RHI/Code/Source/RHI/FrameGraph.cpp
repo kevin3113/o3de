@@ -18,6 +18,7 @@
 #include <Atom/RHI/SwapChain.h>
 #include <Atom/RHI/SwapChainFrameAttachment.h>
 
+
 namespace AZ::RHI
 {
     FrameGraph::~FrameGraph()
@@ -207,7 +208,14 @@ namespace AZ::RHI
         GraphEdgeType edgeType = usage == ScopeAttachmentUsage::SubpassInput ? GraphEdgeType::SameGroup : GraphEdgeType::DifferentGroup;
         if (Scope* producer = frameAttachment.GetLastScope())
         {
+            printf("Image UseAttachmentInternal insert Edge\n");
             InsertEdge(*producer, *m_currentScope, edgeType);
+            printf("[label=I_%x_%x_%x_%x_%s]\n",
+                (unsigned int)frameAttachment.GetImageDescriptor().m_bindFlags,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_width,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_height,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_depth,
+                frameAttachment.GetId().GetCStr());
         }
 
         ImageScopeAttachment* scopeAttachment =
@@ -246,7 +254,14 @@ namespace AZ::RHI
         // TODO:[ATOM-1267] Replace with writer / reader dependencies.
         if (Scope* producer = frameAttachment.GetLastScope())
         {
+            printf("Image-1 UseAttachmentInternal insert Edge\n");
             InsertEdge(*producer, *m_currentScope);
+            printf("[label=I_%x_%x_%x_%x_%s]\n",
+                (unsigned int)frameAttachment.GetImageDescriptor().m_bindFlags,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_width,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_height,
+                (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_depth,
+                frameAttachment.GetId().GetCStr());
         }
 
         ResolveScopeAttachment* scopeAttachment =
@@ -284,7 +299,12 @@ namespace AZ::RHI
         // TODO:[ATOM-1267] Replace with writer / reader dependencies.
         if (Scope* producer = frameAttachment.GetLastScope())
         {
+            printf("Buffer UseAttachmentInternal insert Edge\n");
             InsertEdge(*producer, *m_currentScope);
+            printf("[label=B_%x_%lx_%s]\n",
+                (unsigned int)frameAttachment.GetBufferDescriptor().m_bindFlags,
+                (unsigned long)frameAttachment.GetBufferDescriptor().m_byteCount,
+                frameAttachment.GetId().GetCStr());
         }
 
         BufferScopeAttachment* scopeAttachment =
@@ -306,6 +326,7 @@ namespace AZ::RHI
         BufferFrameAttachment* attachment = m_attachmentDatabase.FindAttachment<BufferFrameAttachment>(descriptor.m_attachmentId);
         if (attachment)
         {
+            printf("buffer UseAttachment id %s\n", descriptor.m_attachmentId.GetCStr());
             UseAttachmentInternal(*attachment, usage, access, descriptor);
             return ResultCode::Success;
         }
@@ -321,6 +342,7 @@ namespace AZ::RHI
         ImageFrameAttachment* attachment = m_attachmentDatabase.FindAttachment<ImageFrameAttachment>(descriptor.m_attachmentId);
         if (attachment)
         {
+            printf("image UseAttachment id %s\n", descriptor.m_attachmentId.GetCStr());
             UseAttachmentInternal(*attachment, usage, access, descriptor);
             return ResultCode::Success;
         }
@@ -348,6 +370,7 @@ namespace AZ::RHI
         ImageFrameAttachment* attachment = m_attachmentDatabase.FindAttachment<ImageFrameAttachment>(descriptor.m_attachmentId);
         if (attachment)
         {
+            printf("resolve UseAttachment id %s\n", descriptor.m_attachmentId.GetCStr());
             UseAttachmentInternal(*attachment, descriptor);
             return ResultCode::Success;
         }
@@ -401,6 +424,7 @@ namespace AZ::RHI
             if (found != m_scopeLookup.end())
             {
                 InsertEdge(*found->second, *m_currentScope);
+                printf("[label=QuePool_%s]\n", id.GetCStr());
             }
         }
 
@@ -413,6 +437,7 @@ namespace AZ::RHI
         if (Scope* producer = FindScope(producerScopeId))
         {
             InsertEdge(*producer, *m_currentScope);
+            printf("[label=order_after]\n");
         }
     }
 
@@ -421,6 +446,7 @@ namespace AZ::RHI
         if (Scope* consumer = FindScope(consumerScopeId))
         {
             InsertEdge(*m_currentScope, *consumer);
+            printf("[label=order_before]\n");
         }
     }
 
@@ -602,14 +628,14 @@ namespace AZ::RHI
 
             GraphNode& producerGraphNode = m_graphNodes[graphEdge.m_producerIndex];
             producerGraphNode.m_consumers.push_back(&consumer);
-            printf("+++ insert edge %s --> %s\n", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
+            printf("+++ insert edge %s -> %s ", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
         }
         else
         {
             // Update the edge type if needed.
             GraphEdge& edge = *findIter;
             edge.m_type = edgeType == GraphEdgeType::SameGroup ? edgeType : edge.m_type;
-            printf(">>> update edge %s --> %s\n", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
+            printf(">>> update edge %s -> %s ", producer.GetId().GetCStr(), consumer.GetId().GetCStr());
         }
     }
 }

@@ -1,0 +1,266 @@
+1. Learning Modern 3D Graphics Programming
+https://paroj.github.io/gltut/index.html
+
+2. tutouries(OpenGL)
+https://github.com/paroj/gltut
+
+3. vulkan intro
+https://docs.vulkan.org/tutorial/latest/00_Introduction.html
+
+g++ test.cpp -g -O2 -std=c++17 -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi -o test
+
+4. architecture:
+https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Loader/+/HEAD/loader/LoaderAndLayerInterface.md
+
+https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md
+
+
+file:///home/kai/Downloads/vk-1.3-spec.pdf
+
+https://www.mesa3d.org/
+
+https://github.com/glfw/glfw/releases/tag/3.4
+
+https://github.com/KhronosGroup/OpenGL-Registry
+
+
+
+cmake -B build/linux -S . -G "Ninja" -DLY_3RDPARTY_PATH=./o3de-packages
+cmake --build build/linux --target Editor --config release -j8
+
+
+[2/739] Building CXX object Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx.o
+FAILED: Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx.o 
+/bin/g++ -DAZ_BUILD_CONFIGURATION_TYPE=\"profile\" -DAZ_ENABLE_DEBUG_TOOLS -DAZ_ENABLE_TRACING -DAZ_PROFILE_BUILD -DLINUX -DLINUX64 -DNDEBUG -DPAL_TRAIT_LINUX_WINDOW_MANAGER_XCB -D_FORTIFY_SOURCE=2 -D_HAS_EXCEPTIONS=0 -D_PROFILE -D__linux__ -I/mnt/work/o3de/Code/Framework/AzFramework/. -I/mnt/work/o3de/Code/Framework/AzFramework/Platform/Linux -I/mnt/work/o3de/Code/Framework/AzFramework/Platform/Common -I/mnt/work/o3de/Code/Framework/AzFramework/Platform/Common/Xcb -I/mnt/work/o3de/Code/Framework/AzCore/. -I/mnt/work/o3de/Code/Framework/AzCore/Platform/Linux -I/mnt/work/o3de/Code/Framework/AzCore/Platform/Common -I/mnt/work/o3de/Code/Framework/AzNetworking/. -I/mnt/work/o3de/Code/Framework/AzNetworking/Platform/Common -I/mnt/work/o3de/Code/Framework/AzNetworking/Platform/Linux -I/mnt/work/o3de/build/linux/Code/Framework/AzNetworking/Azcg/Generated/AzNetworking -isystem /mnt/work/o3de/o3de-packages/packages/Lua-5.4.4-rev1-linux/Lua/include -isystem /mnt/work/o3de/o3de-packages/packages/RapidJSON-1.1.0-rev1-multiplatform/RapidJSON/include -isystem /mnt/work/o3de/o3de-packages/packages/RapidXML-1.13-rev1-multiplatform/RapidXML/include -isystem /mnt/work/o3de/o3de-packages/packages/zlib-1.2.11-rev5-linux/zlib/include -isystem /mnt/work/o3de/o3de-packages/packages/cityhash-1.1-multiplatform/cityhash/src -isystem /mnt/work/o3de/o3de-packages/packages/lz4-1.9.4-rev2-linux/lz4/include -fno-exceptions -fvisibility=hidden -fvisibility-inlines-hidden -Wall -fpie -fstack-protector-all -Wno-array-bounds -Wno-attributes -Wno-class-memaccess -Wno-delete-non-virtual-dtor -Wno-enum-compare -Wno-format-overflow -Wno-format-truncation -Wno-int-in-bool-context -Wno-logical-not-parentheses -Wno-memset-elt-size -Wno-nonnull-compare -Wno-parentheses -Wno-reorder -Wno-restrict -Wno-sequence-point -Wno-sign-compare -Wno-strict-aliasing -Wno-stringop-overflow -Wno-stringop-truncation -Wno-switch -Wno-uninitialized -Wno-unused-result -msse4.1  -O2 -g -std=c++17 -fPIC -MD -MT Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx.o -MF Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx.o.d -o Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx.o -c /mnt/work/o3de/build/linux/Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx
+In file included from /mnt/work/o3de/Code/Framework/AzFramework/Platform/Linux/AzFramework/Components/NativeUISystemComponent_Linux.cpp:17,
+                 from /mnt/work/o3de/build/linux/Code/Framework/AzFramework/CMakeFiles/AzFramework.NativeUI.dir/Unity/unity_0_cxx.cxx:10:
+/mnt/work/o3de/Code/Framework/AzFramework/Platform/Common/Xcb/AzFramework/XcbInputDeviceMouse.h:17:10: fatal error: xcb/xinput.h: No such file or directory
+   17 | #include <xcb/xinput.h>
+      |          ^~~~~~~~~~~~~~
+compilation terminated.
+
+sudo apt install libxcb-xinput-dev
+
+
+project build:
+cmake -B build/linux -S . -GNinja Multi-Config -DLY_3RDPARTY_PATH=/home/kai/o3deprj/.o3de/3rdParty
+cmake --build build/linux --target MyProject.GameLauncher MyProject.HeadlessServerLauncher MyProject.ServerLauncher MyProject.UnifiedLauncher Editor --config release -j8
+
+
+
+
+pass create -> ProducerScope() -> Factory::Get().CreateScope()(SystemComponent) -> Vulkan::Scope::Create()
+
+print_stack()
+AZ::Vulkan::CommandList::Submit(AZ::RHI::CopyItem const&, unsigned int)
+AZ::Vulkan::BufferPoolResolver::Resolve(AZ::Vulkan::CommandList&)
+AZ::Vulkan::Scope::Begin(AZ::Vulkan::CommandList&) const
+AZ::Vulkan::FrameGraphExecuteGroupPrimary::BeginContextInternal(AZ::RHI::FrameGraphExecuteContext&, unsigned int)
+AZ::RHI::FrameGraphExecuteGroup::BeginContext(unsigned int)
+AZ::RHI::FrameScheduler::ExecuteContextInternal(AZ::RHI::FrameGraphExecuteGroup&, unsigned int)
+AZ::RHI::FrameScheduler::ExecuteGroupInternal(AZ::Job*, unsigned int)
+AZ::Internal::JobManagerBase::Process(AZ::Job*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsInternal(AZ::Internal::JobManagerWorkStealing::ThreadInfo*, AZ::Job*, std::atomic<bool>*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsWorker(AZ::Internal::JobManagerWorkStealing::ThreadInfo*)
+AZStd::Internal::thread_run_function(void*)
+[bt] #13 /lib/x86_64-linux-gnu/libc.so.6(clone+0x42) [0x7fe7f4d9f352]
+
+print_stack()
+AZ::Vulkan::CommandList::ClearImage(AZ::Vulkan::CommandList::ResourceClearRequest const&)
+AZ::Vulkan::Scope::ProcessClearRequests(AZ::Vulkan::CommandList&) const
+AZ::Vulkan::FrameGraphExecuteGroupPrimary::BeginContextInternal(AZ::RHI::FrameGraphExecuteContext&, unsigned int)
+AZ::RHI::FrameGraphExecuteGroup::BeginContext(unsigned int)
+AZ::RHI::FrameScheduler::ExecuteContextInternal(AZ::RHI::FrameGraphExecuteGroup&, unsigned int)
+AZ::RHI::FrameScheduler::ExecuteGroupInternal(AZ::Job*, unsigned int)
+AZ::Internal::JobManagerBase::Process(AZ::Job*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsInternal(AZ::Internal::JobManagerWorkStealing::ThreadInfo*, AZ::Job*, std::atomic<bool>*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsWorker(AZ::Internal::JobManagerWorkStealing::ThreadInfo*)
+AZStd::Internal::thread_run_function(void*)
+[bt] #12 /lib/x86_64-linux-gnu/libc.so.6(clone+0x42) [0x7fe7f4d9f352]
+
+
+print_stack()
+AZ::Vulkan::CommandList::Submit(AZ::RHI::DispatchItem const&, unsigned int)
+AZ::RPI::RenderPass::BuildCommandList(AZ::RHI::FrameGraphExecuteContext const&)
+AZ::RHI::FrameScheduler::ExecuteContextInternal(AZ::RHI::FrameGraphExecuteGroup&, unsigned int)
+AZ::RHI::FrameScheduler::ExecuteGroupInternal(AZ::Job*, unsigned int)
+AZ::Internal::JobManagerBase::Process(AZ::Job*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsInternal(AZ::Internal::JobManagerWorkStealing::ThreadInfo*, AZ::Job*, std::atomic<bool>*)
+AZ::Internal::JobManagerWorkStealing::ProcessJobsWorker(AZ::Internal::JobManagerWorkStealing::ThreadInfo*)
+AZStd::Internal::thread_run_function(void*)
+[bt] #10 /lib/x86_64-linux-gnu/libc.so.6(clone+0x42) [0x7fe7f4d9f352]
+
+AZ::Vulkan::Queue::SubmitCommandBuffers(AZStd::vector<AZStd::intrusive_ptr<AZ::Vulkan::CommandList>, AZStd::allocator> const&, AZStd::vector<AZStd::pair<unsigned int, AZStd::intrusive_ptr<AZ::Vulkan::Semaphore> >, AZStd::allocator> const&, AZStd::vector<AZStd::intrusive_ptr<AZ::Vulkan::Semaphore>, AZStd::allocator> const&, AZStd::vector<AZStd::intrusive_ptr<AZ::Vulkan::Fence>, AZStd::allocator> const&, AZ::Vulkan::Fence*)
+void AZStd::Internal::function_util::get_invoker<void (void*), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::Vulkan::CommandQueue::Signal(AZ::Vulkan::Fence&)::{lambda(void*)#1}>(AZStd::Internal::function_util::function_buffer&, void*&&)
+AZ::RHI::CommandQueue::QueueCommand(AZStd::function<void (void*)>)
+AZ::Vulkan::CommandQueue::Signal(AZ::Vulkan::Fence&)
+void AZStd::Internal::function_util::get_invoker<void (void*), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::Vulkan::AsyncUploadQueue::QueueUpload(AZ::RHI::StreamingImageExpandRequestTemplate<AZ::RHI::Image> const&, unsigned int)::{lambda(void*)#1}>(AZStd::Internal::function_util::function_buffer&, void*&&)
+AZ::RHI::CommandQueue::ProcessQueue()
+AZStd::Internal::thread_run_function(void*)
+[bt] #8 /lib/x86_64-linux-gnu/libc.so.6(clone+0x42) [0x7fe7f4d9f352]
+
+
+// Buffer/Image 从这里来
+const FrameGraphAttachmentDatabase& attachmentDatabase = frameGraph.GetAttachmentDatabase();
+
+Gems/Atom/Feature/Common/Assets/Passes/UIParent.pass
+
+
+AZ::RPI::RenderPass::FrameBeginInternal(AZ::RPI::Pass::FramePrepareParams)
+AZ::RPI::Pass::FrameBegin(AZ::RPI::Pass::FramePrepareParams)
+AZ::RPI::ParentPass::FrameBeginInternal(AZ::RPI::Pass::FramePrepareParams)
+AZ::RPI::Pass::FrameBegin(AZ::RPI::Pass::FramePrepareParams)
+AZ::RPI::PassSystem::FrameUpdate(AZ::RHI::FrameGraphBuilder&)
+void AZStd::Internal::function_util::get_invoker<void (AZ::RHI::FrameGraphBuilder&), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::RPI::RPISystem::RenderTick()::{lambda(AZ::RHI::FrameGraphBuilder&)#1}>(AZStd::Internal::function_util::function_buffer&, AZ::RHI::FrameGraphBuilder&)
+AZ::RHI::RHISystem::FrameUpdate(AZStd::function<void (AZ::RHI::FrameGraphBuilder&)>)
+AZ::RPI::RPISystem::RenderTick()
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+
+Root Pass/ PassesWithoutPipeline:
+
+AZ::RPI::ParentPass::Create(AZ::RPI::PassDescriptor const&)
+AZ::RPI::PassSystem::Init()
+AZ::RPI::RPISystem::Initialize(AZ::RPI::RPISystemDescriptor const&)
+AZ::RPI::RPISystemComponent::Activate()
+AZ::ModuleManager::ActivateEntities(AZStd::vector<AZStd::shared_ptr<AZ::ModuleDataImpl>, AZStd::allocator> const&)
+void AZ::Internal::EBusContainer<AZ::EntityEvents, AZ::EntityEvents, (AZ::EBusAddressPolicy)1, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::EntityEvents, AZ::EntityEvents> >::Event<void (AZ::EntityEvents::*)(AZ::EntityId const&), AZ::EntityId&>(AZ::EntityId const&, void (AZ::EntityEvents::*&&)(AZ::EntityId const&), AZ::EntityId&)
+AZ::Entity::Activate()
+AzFramework::Application::StartCommon(AZ::Entity*)
+AzToolsFramework::ToolsApplication::StartCommon(AZ::Entity*)
+EditorInternal::EditorToolsApplication::StartCommon(AZ::Entity*)
+AzToolsFramework::ToolsApplication::Start(AZ::ComponentApplication::Descriptor const&, AZ::ComponentApplication::StartupParameters const&)
+EditorInternal::EditorToolsApplication::Start()
+[bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x383) [0x7f112fe19cc3]
+
+Parent Pass MainPipeline_0
+
+AZ::RPI::SwapChainPass::SwapChainPass(AZ::RPI::PassDescriptor const&, AZ::RPI::WindowContext const*, AZ::RPI::ViewType)
+AZ::RPI::RenderPipeline::CreateRenderPipelineForWindow(AZ::RPI::RenderPipelineDescriptor const&, AZ::RPI::WindowContext const&, AZ::RPI::ViewType)
+AZ::Render::Bootstrap::BootstrapSystemComponent::LoadPipeline(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>, AZStd::basic_string_view<char, AZStd::char_traits<char> >, AZ::RPI::ViewType, AZ::RHI::MultisampleState&)
+AZ::Render::Bootstrap::BootstrapSystemComponent::EnsureDefaultRenderPipelineInstalledForScene(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>)
+AtomToolsFramework::RenderViewportWidget::SetScene(AZStd::shared_ptr<AzFramework::Scene> const&, bool)
+[bt] #6 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget11UpdateSceneEv+0x83) [0x7f112f985093]
+[bt] #7 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget13SetViewportIdEi+0x161) [0x7f112f989c91]
+CLayoutViewPane::AttachViewport(QWidget*)
+CLayoutViewPane::SetViewClass(QString const&)
+CLayoutWnd::BindViewport(CLayoutViewPane*, QString const&, QWidget*)
+CLayoutWnd::MaximizeViewport(int)
+CLayoutWnd::LoadConfig()
+[bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow17InitCentralWidgetEv+0x174) [0x7f112fdb02b4]
+[bt] #14 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow10InitializeEv+0x80) [0x7f112fdb3490]
+[bt] #15 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp12InitInstanceEv+0x8f8) [0x7f112fe15f98]
+[bt] #16 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x47e) [0x7f112fe19dbe]
+
+
+AZ::RPI::Scene::AddRenderPipeline(AZStd::shared_ptr<AZ::RPI::RenderPipeline>)
+AZ::Render::Bootstrap::BootstrapSystemComponent::LoadPipeline(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>, AZStd::basic_string_view<char, AZStd::char_traits<char> >, AZ::RPI::ViewType, AZ::RHI::MultisampleState&)
+AZ::Render::Bootstrap::BootstrapSystemComponent::EnsureDefaultRenderPipelineInstalledForScene(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>)
+AtomToolsFramework::RenderViewportWidget::SetScene(AZStd::shared_ptr<AzFramework::Scene> const&, bool)
+[bt] #5 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget11UpdateSceneEv+0x83) [0x7f76a6348093]
+[bt] #6 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget13SetViewportIdEi+0x161) [0x7f76a634cc91]
+CLayoutViewPane::AttachViewport(QWidget*)
+CLayoutViewPane::SetViewClass(QString const&)
+CLayoutWnd::BindViewport(CLayoutViewPane*, QString const&, QWidget*)
+CLayoutWnd::MaximizeViewport(int)
+CLayoutWnd::LoadConfig()
+[bt] #12 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow17InitCentralWidgetEv+0x174) [0x7f76a67732b4]
+[bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow10InitializeEv+0x80) [0x7f76a6776490]
+[bt] #14 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp12InitInstanceEv+0x8f8) [0x7f76a67d8f98]
+[bt] #15 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x47e) [0x7f76a67dcdbe]
+
+
+AZ::RPI::PassSystem::AddRenderPipeline(AZ::RPI::RenderPipeline*)
+AZ::RPI::Scene::AddRenderPipeline(AZStd::shared_ptr<AZ::RPI::RenderPipeline>)
+AZ::Render::Bootstrap::BootstrapSystemComponent::LoadPipeline(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>, AZStd::basic_string_view<char, AZStd::char_traits<char> >, AZ::RPI::ViewType, AZ::RHI::MultisampleState&)
+AZ::Render::Bootstrap::BootstrapSystemComponent::EnsureDefaultRenderPipelineInstalledForScene(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>)
+AtomToolsFramework::RenderViewportWidget::SetScene(AZStd::shared_ptr<AzFramework::Scene> const&, bool)
+[bt] #6 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget11UpdateSceneEv+0x83) [0x7fa207999093]
+[bt] #7 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget13SetViewportIdEi+0x161) [0x7fa20799dc91]
+CLayoutViewPane::AttachViewport(QWidget*)
+CLayoutViewPane::SetViewClass(QString const&)
+CLayoutWnd::BindViewport(CLayoutViewPane*, QString const&, QWidget*)
+CLayoutWnd::MaximizeViewport(int)
+CLayoutWnd::LoadConfig()
+[bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow17InitCentralWidgetEv+0x174) [0x7fa207dc42b4]
+[bt] #14 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow10InitializeEv+0x80) [0x7fa207dc7490]
+[bt] #15 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp12InitInstanceEv+0x8f8) [0x7fa207e29f98]
+[bt] #16 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x47e) [0x7fa207e2ddbe]
+
+
+AZ::RPI::PassSystem::RemoveRenderPipeline(AZ::RPI::RenderPipeline*)
+AZ::RPI::RenderPipeline::OnRemovedFromScene(AZ::RPI::Scene*)
+AZ::RPI::Scene::RemoveRenderPipeline(AZ::Name const&)
+AZ::RPI::PassSystem::FrameEnd()
+AZ::RPI::RPISystem::RenderTick()
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+[bt] #9 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp14IdleProcessingEb+0x101) [0x7fa207e21851]
+[bt] #10 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp6OnIdleEi+0x3a) [0x7fa207e21b6a]
+Editor::EditorQtApplication::maybeProcessIdle()
+
+
+pass->GetName()
+pipeline->GetId()
+scene->GetName()
+
+pass 增加attachment
+AttachBufferToSlot
+
+引入连接关系到RHI
+Pass::FrameBegin -> Pass::ImportAttachments -> attachmentDatabase.ImportImage
+                                               attachmentDatabase.ImportBuffer
+                    Pass::CreateTransientAttachments -> attachmentDatabase.CreateTransientImage
+                                                        attachmentDatabase.CreateTransientBuffer
+                                                        
+pass创建：
+Ptr<Pass> PassFactory::CreatePassFromTemplate(Name templateName, Name passName)
+PassSystemInterface::Get()->CreatePassFromTemplate(Name("Template"), Name("PassName"));
+
+AddAttachmentBinding
+m_name
+m_slotType = PassSlotType::InputOutput
+
+CommonBufferDescriptor cbd;
+cbd.m_poolType = CommonBufferPoolType::ReadBack;
+cbd.m_byteCount = 1024;
+Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
+
+PassConnection
+m_localSlot
+m_attachmentRef
+
+PassAttachmentRef ref;
+m_pass
+m_attachment
+
+PassRequest
+AddInputConnection(PassConnection inputConnection);
+m_passName
+m_templateName
+m_imageAttachmentOverrides
+m_bufferAttachmentOverrides
+m_executeAfterPasses
+m_executeBeforePasses
+
+m_bufferDescriptor.m_byteCount
+m_name
+m_lifetime  AttachmentLifetimeType::Imported/Transient
+
+connection可以连接到其他pass的slot，也可以连接到自己的image/buffer
+
+
+BufferDescriptor
+m_byteCount
+m_bindFlags
+
+ImageDescriptor
+m_size
+          uint32_t m_width = 1;
+        uint32_t m_height = 1;
+        uint32_t m_depth = 1;
+
+m_bindFlags

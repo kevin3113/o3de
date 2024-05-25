@@ -148,6 +148,8 @@ namespace AZ
             const AZStd::shared_ptr<const PassTemplate>& passTemplate = m_passLibrary->GetPassTemplate(passRequest->m_templateName);
             if (passTemplate == nullptr)
             {
+                printf("m_passLibrary->GetPassTemplate FAILED TO CREATE PASS [%s]. Could not find pass template [%s]\n",
+                    passRequest->m_passName.GetCStr(), passRequest->m_templateName.GetCStr());
                 AZ_Error("PassFactory", false, "FAILED TO CREATE PASS [%s]. Could not find pass template [%s]", passRequest->m_passName.GetCStr(), passRequest->m_templateName.GetCStr());
                 return nullptr;
             }
@@ -155,9 +157,14 @@ namespace AZ
             CreatorIndex index = FindCreatorIndex(passTemplate->m_passClass);
             if (!index.IsValid())
             {
+                printf("FindCreatorIndex FAILED TO CREATE PASS [%s]. Could not find pass class [%s]",
+                    passRequest->m_passName.GetCStr(), passTemplate->m_passClass.GetCStr());
                 AZ_Error("PassFactory", false, "FAILED TO CREATE PASS [%s]. Could not find pass class [%s]", passRequest->m_passName.GetCStr(), passTemplate->m_passClass.GetCStr());
                 return nullptr;
             }
+
+            printf("FindCreatorIndex for request pass [%s] pass class [%s] index [%u]\n",
+                passRequest->m_passName.GetCStr(), passTemplate->m_passClass.GetCStr(), index.GetIndex());
 
             return CreatePassFromIndex(index, passRequest->m_passName, passTemplate, passRequest);
         }

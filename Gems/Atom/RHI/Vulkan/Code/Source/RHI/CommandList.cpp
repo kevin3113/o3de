@@ -36,6 +36,23 @@
 #include <Atom/RHI.Reflect/IndirectBufferLayout.h>
 #include <Atom/RHI/DispatchRaysItem.h>
 
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+void static print_stack(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+
 namespace AZ
 {
     namespace Vulkan
@@ -99,6 +116,9 @@ namespace AZ
             ValidateSubmitIndex(submitIndex);
 
             const auto& context = static_cast<Device&>(GetDevice()).GetContext();
+
+            printf("CommandList submit copy type %d thread %d\n", (int)copyItem.m_type, (int)gettid());
+            //print_stack();
 
             switch (copyItem.m_type)
             {
@@ -268,6 +288,9 @@ namespace AZ
         {
             ValidateSubmitIndex(submitIndex);
 
+            printf("CommandList submit drawItem type %d thread %d\n", (int)drawItem.m_arguments.m_type, (int)gettid());
+            //print_stack();
+
             if (!CommitShaderResource(drawItem))
             {
                 AZ_Warning("CommandList", false, "Failed to bind shader resources for draw item. Skipping.");
@@ -394,6 +417,9 @@ namespace AZ
         void CommandList::Submit(const RHI::DispatchItem& dispatchItem, uint32_t submitIndex)
         {
             ValidateSubmitIndex(submitIndex);
+            
+            printf("CommandList submit displayItem type %d thread %d\n", (int)dispatchItem.m_arguments.m_type, (int)gettid());
+            //print_stack();
 
             if (!CommitShaderResource(dispatchItem))
             {
@@ -432,6 +458,9 @@ namespace AZ
         void CommandList::Submit([[maybe_unused]] const RHI::DispatchRaysItem& dispatchRaysItem, uint32_t submitIndex)
         {
             ValidateSubmitIndex(submitIndex);
+
+            printf("CommandList submit displayRaysItem type %d thread %d\n", (int)dispatchRaysItem.m_arguments.m_type, (int)gettid());
+            //print_stack();
 
             // manually clear the Dispatch bindings
             ShaderResourceBindings& bindings = GetShaderResourceBindingsByPipelineType(RHI::PipelineStateType::Dispatch);
@@ -1247,6 +1276,8 @@ namespace AZ
 
             VkClearValue vkClearValue;
             FillClearValue(request.m_clearValue, vkClearValue);
+            printf("CommandList::ClearImage type %d thread %d\n", (int)request.m_clearValue.m_type, (int)gettid());
+            //print_stack();
 
             switch (request.m_clearValue.m_type)
             {
@@ -1282,6 +1313,8 @@ namespace AZ
             } vkClearValue;
 
             const RHI::ClearValue& clearValue = request.m_clearValue;
+            printf("CommandList::ClearBuffer type %d thread %d\n", (int)clearValue.m_type, (int)gettid());
+            //print_stack();
             switch (clearValue.m_type)
             {
             case RHI::ClearValueType::Vector4Float:
