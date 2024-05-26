@@ -97,6 +97,7 @@ namespace AZ
             AZ_RPI_PASS(Pass);
 
             friend class ImageAttachmentPreviewPass;
+            friend class PassDistSystem;
 
         public:
             using ChildPassIndex = RHI::Handle<uint32_t, class ChildPass>;

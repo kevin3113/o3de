@@ -15,6 +15,7 @@
 #include <Atom/RPI.Public/Material/MaterialSystem.h>
 #include <Atom/RPI.Public/Model/ModelSystem.h>
 #include <Atom/RPI.Public/Pass/PassSystem.h>
+#include <Atom/RPI.Public/Pass/PassDistSystem.h>
 #include <Atom/RPI.Public/XR/XRRenderingInterface.h>
 #include <Atom/RHI/RHISystem.h>
 #include <Atom/RPI.Public/RPISystemInterface.h>
@@ -122,6 +123,7 @@ namespace AZ
             BufferSystem m_bufferSystem;
             ImageSystem m_imageSystem;
             PassSystem m_passSystem;
+            PassDistSystem m_passDistSystem;
             DynamicDrawSystem m_dynamicDraw;
             FeatureProcessorFactory m_featureProcessorFactory;
             GpuQuerySystem m_querySystem;

@@ -71,6 +71,8 @@ set(FILES
     Include/Atom/RPI.Public/Pass/PassAttachment.h
     Include/Atom/RPI.Public/Pass/PassTree.h
     Include/Atom/RPI.Public/Pass/PassDefines.h
+    Include/Atom/RPI.Public/Pass/PassDistSystem.h
+    Include/Atom/RPI.Public/Pass/PassDistSystemInterface.h
     Include/Atom/RPI.Public/Pass/PassFactory.h
     Include/Atom/RPI.Public/Pass/PassFilter.h
     Include/Atom/RPI.Public/Pass/PassLibrary.h
@@ -160,6 +162,7 @@ set(FILES
     Source/RPI.Public/Pass/PassFilter.cpp
     Source/RPI.Public/Pass/PassLibrary.cpp
     Source/RPI.Public/Pass/PassSystem.cpp
+    Source/RPI.Public/Pass/PassDistSystem.cpp
     Source/RPI.Public/Pass/PassUtils.cpp
     Source/RPI.Public/Pass/RasterPass.cpp
     Source/RPI.Public/Pass/RenderPass.cpp

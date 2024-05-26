@@ -19,6 +19,25 @@
 #include <Atom/RHI/SwapChainFrameAttachment.h>
 
 
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+
+#include <execinfo.h>
+void static print_stack_graph(void)
+{
+    void *stack[32];
+    char **msg;
+    int sz = backtrace(stack, 32);
+    msg = backtrace_symbols(stack, sz);
+    printf("[bt] #0 thread %d\n", (int)gettid());
+    for (int i = 1; i < sz; i++) {
+        printf("[bt] #%d %s\n", i, msg[i]);
+    }
+}
+
+#define print_stack print_stack_graph
+
 namespace AZ::RHI
 {
     FrameGraph::~FrameGraph()
@@ -617,6 +636,8 @@ namespace AZ::RHI
         {
             return element.m_consumerIndex == graphEdge.m_consumerIndex && element.m_producerIndex == graphEdge.m_producerIndex;
         });
+
+        //print_stack();
 
         if (findIter == m_graphEdges.end())
         {

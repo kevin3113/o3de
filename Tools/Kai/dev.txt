@@ -202,6 +202,60 @@ AZ::ComponentApplication::TickSystem()
 [bt] #10 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp6OnIdleEi+0x3a) [0x7fa207e21b6a]
 Editor::EditorQtApplication::maybeProcessIdle()
 
+AZ::RPI::ParentPass::BuildInternal()
+AZ::Render::EsmShadowmapsPass::BuildInternal()
+AZ::RPI::Pass::Build(bool) [clone .part.0]
+AZ::RPI::PassTree::BuildPasses()
+AZ::RPI::PassTree::ProcessQueuedChanges()
+AZ::RPI::RenderPipeline::UpdatePasses()
+AZ::RPI::RenderPipeline::OnStartFrame(float)
+AZ::RPI::Scene::PrepareRender(AZ::RHI::JobPolicy, float)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+AZ::RPI::ParentPass::BuildInternal()
+AZ::RPI::Pass::Build(bool) [clone .part.0]
+AZ::RPI::ParentPass::BuildInternal()
+AZ::RPI::SwapChainPass::BuildInternal() [clone .part.0]
+AZ::RPI::Pass::Build(bool) [clone .part.0]
+AZ::RPI::PassTree::BuildPasses()
+AZ::RPI::PassTree::ProcessQueuedChanges()
+AZ::RPI::RenderPipeline::UpdatePasses()
+AZ::RPI::RenderPipeline::OnStartFrame(float)
+AZ::RPI::Scene::PrepareRender(AZ::RHI::JobPolicy, float)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+Root -> Pass.xxxx
+AZ::RHI::FrameGraph::ExecuteAfter(AZ::Name const&)
+AZ::RHI::FrameScheduler::PrepareProducers()
+AZ::RHI::FrameScheduler::Compile(AZ::RHI::FrameSchedulerCompileRequest const&)
+AZ::RHI::RHISystem::FrameUpdate(AZStd::function<void (AZ::RHI::FrameGraphBuilder&)>)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+
+Pass.xxx -> Pass.yyy
+AZ::RHI::FrameGraph::UseAttachmentInternal(AZ::RHI::ImageFrameAttachment&, AZ::RHI::ScopeAttachmentUsage, AZ::RHI::ScopeAttachmentAccess, AZ::RHI::ImageScopeAttachmentDescriptor const&)
+AZ::RHI::FrameGraph::UseAttachment(AZ::RHI::ImageScopeAttachmentDescriptor const&, AZ::RHI::ScopeAttachmentAccess, AZ::RHI::ScopeAttachmentUsage)
+AZ::RPI::RenderPass::DeclareAttachmentsToFrameGraph(AZ::RHI::FrameGraphInterface) const
+AZ::RPI::RenderPass::SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface)
+AZ::Render::ImGuiPass::SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface)
+AZ::RHI::FrameScheduler::PrepareProducers()
+AZ::RHI::FrameScheduler::Compile(AZ::RHI::FrameSchedulerCompileRequest const&)
+AZ::RHI::RHISystem::FrameUpdate(AZStd::function<void (AZ::RHI::FrameGraphBuilder&)>)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+
 
 pass->GetName()
 pipeline->GetId()
@@ -264,3 +318,29 @@ m_size
         uint32_t m_depth = 1;
 
 m_bindFlags
+
+RPI pass 处理：
+1. add pass from request -> CreatePassFromRequest
+2. add custom slot -> AddAttachmentBinding
+3. add to parent -> root->AddChild(sp_0);
+
+图构建
+FrameBegin
+Pass::Build, 将input/output关联到image/buffer
+build -> SetupInputsFromRequest -> ProcessConnection
+
+graph compile:
+SetupFrameGraphDependencies -> UseAttachment -> insert edge
+
+
+1、创建一个pass，增加slot
+2、获取当前pass的slot，获取binding，UnifiedScopeAttachmentDescriptor m_unifiedScopeDesc m_attachmentId
+3、修改连接关系
+
+
+
+RenderTick -> Scene::PrepareRender -> RenderPipeline::OnStartFrame -> RenderPipeline::UpdatePasses -> PassTree::ProcessQueuedChanges -> PassTree::BuildPasses parent build, pass build -> SetupInputsFromRequest -> ProcessConnection -> UpdateConnectedBinding,SetOriginalAttachment
+           -> RHI::FrameUpdate -> PassSystem::FrameUpdate -> RenderPipeline::PassSystemFrameBegin -> Pass::FrameBegin -> FrameScheduler::ImportScopeProducer
+                                                                                                                      -> ImportAttachments
+                                                                                                                      -> CreateTransientAttachments
+           -> RHI::FrameScheduler::Compile -> FrameScheduler::PrepareProducers -> RenderPass::SetupFrameGraphDependencies ... -> FrameGraph::UseAttachment

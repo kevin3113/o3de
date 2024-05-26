@@ -1314,6 +1314,8 @@ namespace AZ
                 // Queue for Initialization
                 QueueForInitialization();
             }
+
+            printf("Pass [%s] build end\n", GetName().GetCStr());
         }
 
         void Pass::Initialize()

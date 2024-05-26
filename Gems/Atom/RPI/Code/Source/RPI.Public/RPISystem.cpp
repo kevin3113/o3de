@@ -102,6 +102,7 @@ namespace AZ
             m_modelSystem.Init();
             m_shaderSystem.Init();
             m_passSystem.Init();
+            m_passDistSystem.Init();
             m_featureProcessorFactory.Init();
             m_querySystem.Init(m_descriptor.m_gpuQuerySystemDescriptor);
 
@@ -130,6 +131,7 @@ namespace AZ
             Interface<RPISystemInterface>::Unregister(this);
 
             m_featureProcessorFactory.Shutdown();
+            m_passDistSystem.Shutdown();
             m_passSystem.Shutdown();
             m_dynamicDraw.Shutdown();
             m_bufferSystem.Shutdown();

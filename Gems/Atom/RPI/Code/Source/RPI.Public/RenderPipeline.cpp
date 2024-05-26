@@ -11,6 +11,7 @@
 #include <Atom/RPI.Public/Base.h>
 #include <Atom/RPI.Public/Pass/PassFilter.h>
 #include <Atom/RPI.Public/Pass/PassSystem.h>
+#include <Atom/RPI.Public/Pass/PassDistSystem.h>
 #include <Atom/RPI.Public/Pass/Specific/SwapChainPass.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
 #include <Atom/RHI/RHISystemInterface.h>
@@ -646,6 +647,9 @@ namespace AZ
 
             // Build and initialize any queued passes
             m_passTree.ProcessQueuedChanges();
+
+            printf("PassDistSystemInterface [%p]\n", PassDistSystemInterface::Get());
+            PassDistSystemInterface::Get()->ProcessDistChanges(m_passTree.m_rootPass);
 
             if (m_pipelinePassChanges != PipelinePassChanges::NoPassChanges)
             {
