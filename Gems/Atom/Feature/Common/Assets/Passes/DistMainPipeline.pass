@@ -13,42 +13,9 @@
                     "ScopeAttachmentUsage": "RenderTarget"
                 }
             ],
-            "PassData": {
-                "$type": "PassData",
-                "PipelineGlobalConnections": [
-                    {
-                        "GlobalName": "PipelineOutput",
-                        "Slot": "InputOutput"
-                    }
-                ]
-            },
-            "ImageAttachments": [
-                {
-                    "Name": "DistInput",
-                    "SizeSource": {
-                        "Source": {
-                            "Pass": "This",
-                            "Attachment": "InputOutput"
-                        }
-                    },
-                    "ImageDescriptor": {
-                        "Format": "R16G16_FLOAT",
-                        "SharedQueueMask": "Graphics"
-                    }
-                }
-            ],
-            "Connections": [
-                {
-                    "LocalSlot": "InputOutput",
-                    "AttachmentRef": {
-                        "Pass": "This",
-                        "Attachment": "DistInput"
-                    }
-                }
-            ],
             "PassRequests": [
                 {
-                    "Name": "Split",
+                    "Name": "PassA_0",
                     "TemplateName": "DistPassTemplate",
                     "Enabled": true,
                     "Connections": [
@@ -69,14 +36,14 @@
                     ]
                 },
                 {
-                    "Name": "SendToAll",
+                    "Name": "PassB_0",
                     "TemplateName": "DistPassTemplate",
                     "Enabled": true,
                     "Connections": [
                         {
                             "LocalSlot": "Input",
                             "AttachmentRef": {
-                                "Pass": "Split",
+                                "Pass": "PassA_0",
                                 "Attachment": "Output"
                             }
                         },
@@ -90,14 +57,14 @@
                     ]
                 },
                 {
-                    "Name": "WaitForAll",
+                    "Name": "PassC_0",
                     "TemplateName": "DistPassTemplate",
                     "Enabled": true,
                     "Connections": [
                         {
                             "LocalSlot": "Input",
                             "AttachmentRef": {
-                                "Pass": "SendToAll",
+                                "Pass": "PassB_0",
                                 "Attachment": "Output"
                             }
                         },
@@ -111,14 +78,14 @@
                     ]
                 },
                 {
-                    "Name": "Merge",
+                    "Name": "PassD_0",
                     "TemplateName": "DistPassTemplate",
                     "Enabled": true,
                     "Connections": [
                         {
                             "LocalSlot": "Input",
                             "AttachmentRef": {
-                                "Pass": "WaitForAll",
+                                "Pass": "PassC_0",
                                 "Attachment": "Output"
                             }
                         },

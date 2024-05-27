@@ -345,6 +345,11 @@ namespace AZ
                     //printf("---------- Deactivate Main Scene ----------\n");
                     // Distribute System
                     if (g_dist_pipeline == nullptr) {
+                        const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistMainPipeline", .m_name = "Test_0" };
+                        RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
+                        scenePtr->AddRenderPipeline(pipeline);
+                        g_dist_pipeline = pipeline;
+                        #if 0
                         const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistPipeline", .m_name = "Test_0" };
                         RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
                         scenePtr->AddRenderPipeline(pipeline);
@@ -446,6 +451,8 @@ namespace AZ
                         root->AddChild(sd_0);
                         root->AddChild(wt_0);
                         root->AddChild(mg_0);
+
+                        #endif
 
                         #if 0
                         

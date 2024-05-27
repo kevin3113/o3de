@@ -311,6 +311,7 @@ namespace AZ::RHI
             if (scopeInnerAttachment->GetFrameAttachment().GetId() == frameAttachment.GetId())
             {
                 scopeInnerAttachment->AddUsageAndAccess(usage, access);
+                printf("Buffer UseAttachmentInternal self attachment of current scope!\n");
                 return;
             }
         }
@@ -324,6 +325,10 @@ namespace AZ::RHI
                 (unsigned int)frameAttachment.GetBufferDescriptor().m_bindFlags,
                 (unsigned long)frameAttachment.GetBufferDescriptor().m_byteCount,
                 frameAttachment.GetId().GetCStr());
+        }
+        else
+        {
+            printf("Buffer UseAttachmentInternal last scope %p\n", frameAttachment.GetLastScope());
         }
 
         BufferScopeAttachment* scopeAttachment =

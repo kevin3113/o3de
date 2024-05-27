@@ -38,6 +38,8 @@ namespace AZ
         struct PassDistNode {
             Ptr<Pass> m_self;
             Ptr<Pass> m_modify;
+            Ptr<Pass> m_next;
+            bool built = false;
         };
 
         class PassDistSystemInterface
@@ -56,7 +58,7 @@ namespace AZ
 
             static PassDistSystemInterface* Get();
 
-            virtual void ProcessDistChanges(Ptr<ParentPass> root) = 0;
+            virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
             virtual void FrameEnd(void) = 0;
         };

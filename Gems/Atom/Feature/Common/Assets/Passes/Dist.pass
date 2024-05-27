@@ -20,19 +20,6 @@
             ],
             "ImageAttachments": [
                 {
-                    "Name": "DistInput",
-                    "SizeSource": {
-                        "Source": {
-                            "Pass": "This",
-                            "Attachment": "Input"
-                        }
-                    },
-                    "ImageDescriptor": {
-                        "Format": "R16G16_FLOAT",
-                        "SharedQueueMask": "Graphics"
-                    }
-                },
-                {
                     "Name": "DistOutput",
                     "SizeSource": {
                         "Source": {
@@ -43,22 +30,6 @@
                     "ImageDescriptor": {
                         "Format": "R16G16_FLOAT",
                         "SharedQueueMask": "Graphics"
-                    }
-                }
-            ],
-            "Connections": [
-                {
-                    "LocalSlot": "Input",
-                    "AttachmentRef": {
-                        "Pass": "This",
-                        "Attachment": "DistInput"
-                    }
-                },
-                {
-                    "LocalSlot": "Output",
-                    "AttachmentRef": {
-                        "Pass": "This",
-                        "Attachment": "DistOutput"
                     }
                 }
             ]

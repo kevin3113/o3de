@@ -40,6 +40,7 @@
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
 #include <Atom/RPI.Reflect/Pass/RenderPassData.h>
 #include <Atom/RPI.Reflect/Pass/SlowClearPassData.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -104,13 +105,67 @@ namespace AZ
             }
         }
 
-        void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> root)
+        Ptr<Pass> CreatePass(Name name, Name modify)
+        {
+            PassAttachmentBinding inputBinding;
+            inputBinding.m_name = "Input";
+            inputBinding.m_slotType = PassSlotType::Input;
+
+            PassAttachmentBinding outputBinding;
+            outputBinding.m_name = "Output";
+            outputBinding.m_slotType = PassSlotType::Output;
+
+            PassBufferAttachmentDesc pbd;
+            PassConnection conn;
+            PassRequest req;
+            req.m_passName = name;
+            req.m_templateName = "DistTemplate";;
+            conn.m_localSlot = "Input";
+            conn.m_attachmentRef.m_pass = modify;
+            conn.m_attachmentRef.m_attachment = "Output";
+            req.AddInputConnection(conn);
+
+            pbd.m_name = "rep_0_output";
+            pbd.m_bufferDescriptor.m_byteCount = 1024;
+            req.m_bufferAttachmentOverrides.emplace_back(pbd);
+            
+            conn.m_localSlot = "Output";
+            conn.m_attachmentRef.m_pass = "This";
+            conn.m_attachmentRef.m_attachment = "rep_0_output";
+            req.AddInputConnection(conn);
+            
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
+            add->AddAttachmentBinding(inputBinding);
+            add->AddAttachmentBinding(outputBinding);
+            
+            return add;
+        }
+
+        bool NameEndWith(const Name name, const char *end)
+        {
+            char *subStr = strstr((char *)name.GetCStr(), end);
+            if (!subStr) {
+                return false;
+            }
+            size_t size = strnlen(end, 256);
+            char *next;
+            while (next = strstr(subStr + size, end)) {
+                subStr = next;
+            }
+            if (subStr && 0 == strcmp(end, subStr)) {
+                return true;
+            }
+            return false;
+        }
+
+        void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> &root)
         {
             printf("PassDistSystem pipeline [%s] root pass [%s]\n",
                 root->GetRenderPipeline()->GetId().GetCStr(),
                 root->GetName().GetCStr());
 
             AZStd::vector<Ptr<Pass>> subPasses;
+            Ptr<Pass> modifyPass = nullptr;
             
             for (auto& pass : root->GetChildren())
             {
@@ -118,22 +173,52 @@ namespace AZ
             }
             for (auto& pass : subPasses)
             {
-                if (strstr(pass->GetName().GetCStr(), "PassB_0")) {
-                    printf("current pass [%s] is PassB_0\n", pass->GetName().GetCStr());
-                    for (PassAttachmentBinding& binding : pass->m_attachmentBindings)
-                    {
-                        printf("pass [%s] slot type [%d] name [%s] connect [%s]\n", pass->GetName().GetCStr(),
-                            (uint32_t)binding.m_slotType, binding.m_name.GetCStr(),
-                            binding.m_unifiedScopeDesc.m_attachmentId.GetCStr());
-                        if ((uint32_t)PassSlotType::Input & (uint32_t)binding.m_slotType)
+                if (NameEndWith(pass->GetName(), "PassB_0"))
+                {
+                    printf("current pass [%s] is PassB_0 matched\n", pass->GetName().GetCStr());
+                    if (IsDistProcessed(pass->GetName())) {
+                        printf("pass [%s] has been modified!\n", pass->GetName().GetCStr());
+                        continue;
+                    }
+                    modifyPass = pass;
+                    break;
+                }
+            }
+            if (modifyPass)
+            {
+                std::string orig = modifyPass->GetName().GetCStr();
+                orig += "_rep";
+                Name newName = Name(orig.c_str());
+                Ptr<Pass> newPass = CreatePass(newName, modifyPass->GetName());
+                struct PassDistNode node = {newPass, modifyPass, nullptr};
+                AddDistNode(node);
+                /*
+                PassAttachmentBinding bindingModify = PassAttachmentBinding->GetInputBinding(0);
+                for (auto& pass : subPasses)
+                {
+                    for (PassAttachmentBinding& binding : pass->m_attachmentBindings) {
+                        if ((uint32_t)PassSlotType::Output & (uint32_t)binding.m_slotType)
                         {
-                            printf("pass [%s] input [%s] connect [%s] match\n", pass->GetName().GetCStr(),
-                                binding.m_name.GetCStr(), binding.m_unifiedScopeDesc.m_attachmentId.GetCStr());
+                            printf("Pass [%s] output [%s] attached id [%s] matched\n",
+                                binding.m_name.GetCStr(),
+                                binding.m_unifiedScopeDesc.m_attachmentId);
+                            if (binding.m_unifiedScopeDesc.m_attachmentId == modifyOutput->Get)
+                            {
+                                
+                            std::string orig = pass->GetName().GetCStr();
+                            orig += "_rep";
+                            Name newName = Name(orig.c_str());
+                            Ptr<Pass> newPass = CreatePass(newName, pass->GetName());
+                            struct PassDistNode node = {newPass, pass};
+                            AddDistNode(node);
+                            }
                         }
                     }
                 }
+                */
             }
             subPasses.clear();
+            UpdateDistPasses();
         }
 
         bool PassDistSystem::IsDistProcessed(Name name)
@@ -144,6 +229,8 @@ namespace AZ
 
         void PassDistSystem::AddDistNode(struct PassDistNode &node)
         {
+            printf("add new pass [%s] modify [%s]\n", node.m_self->GetName().GetCStr(),
+                node.m_modify->GetName().GetCStr());
             auto itr = m_node_to_add.find(node.m_modify->GetName());
             if (itr != m_node_to_add.end()) {
                 printf("Pass [%s] has been modified by [%s]!\n",
@@ -155,10 +242,16 @@ namespace AZ
 
         void PassDistSystem::UpdateDistPasses(void)
         {
-            for (auto itr : m_node_to_add)
+            for (auto &itr : m_node_to_add)
             {
-                itr.second.m_modify->GetParent()->AddChild(itr.second.m_self);
-                itr.second.m_self->Build(false);
+                printf("build new pass [%s] modify [%s] built %d\n", itr.second.m_self->GetName().GetCStr(),
+                    itr.second.m_modify->GetName().GetCStr(), (int)itr.second.built);
+                if (!itr.second.built)
+                {
+                    itr.second.m_modify->GetParent()->AddChild(itr.second.m_self);
+                    itr.second.m_self->Build(false);
+                    itr.second.built = true;
+                }
             }
         }
 

@@ -620,6 +620,7 @@ namespace AZ
                 newRoot->Validate(validation);
                 if (validation.IsValid())
                 {
+                    printf("Pipeline [%s] is valid rebuild passes\n", GetId().GetCStr());
                     // Remove old pass
                     m_passTree.m_rootPass->SetRenderPipeline(nullptr);
                     m_passTree.m_rootPass->QueueForRemoval();
