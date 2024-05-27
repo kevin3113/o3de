@@ -55,6 +55,8 @@ namespace AZ
             //! Deletes the Root Pass and shuts down the PassSystem
             void Shutdown();
 
+            Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> modify);
+
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
             void FrameEnd(void) override;

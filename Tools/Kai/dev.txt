@@ -344,3 +344,7 @@ RenderTick -> Scene::PrepareRender -> RenderPipeline::OnStartFrame -> RenderPipe
                                                                                                                       -> ImportAttachments
                                                                                                                       -> CreateTransientAttachments
            -> RHI::FrameScheduler::Compile -> FrameScheduler::PrepareProducers -> RenderPass::SetupFrameGraphDependencies ... -> FrameGraph::UseAttachment
+           
+           
+修改pass依赖关系2种方式: template/request, request > template
+pass的依赖关系与pass在pipeline上的顺序有关系

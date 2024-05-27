@@ -105,7 +105,7 @@ namespace AZ
             }
         }
 
-        Ptr<Pass> CreatePass(Name name, Name modify)
+        Ptr<Pass> PassDistSystem::CreateDistPass(Name name, Ptr<Pass> modify)
         {
             PassAttachmentBinding inputBinding;
             inputBinding.m_name = "Input";
@@ -121,9 +121,18 @@ namespace AZ
             req.m_passName = name;
             req.m_templateName = "DistTemplate";;
             conn.m_localSlot = "Input";
-            conn.m_attachmentRef.m_pass = modify;
-            conn.m_attachmentRef.m_attachment = "Output";
-            req.AddInputConnection(conn);
+            for (auto &mconn : modify->m_request.m_connections)
+            {
+                if (mconn.m_attachmentRef.m_attachment == Name("Output"))
+                {
+                    printf("Replace pass [%s] input to pass [%s] output\n",
+                        name.GetCStr(), mconn.m_attachmentRef.m_pass.GetCStr());
+                    conn.m_attachmentRef.m_pass = mconn.m_attachmentRef.m_pass;
+                    conn.m_attachmentRef.m_attachment = "Output";
+                    req.AddInputConnection(conn);
+                    break;
+                }
+            }
 
             pbd.m_name = "rep_0_output";
             pbd.m_bufferDescriptor.m_byteCount = 1024;
@@ -186,36 +195,60 @@ namespace AZ
             }
             if (modifyPass)
             {
+                #if 0
+
                 std::string orig = modifyPass->GetName().GetCStr();
                 orig += "_rep";
                 Name newName = Name(orig.c_str());
                 Ptr<Pass> newPass = CreatePass(newName, modifyPass->GetName());
                 struct PassDistNode node = {newPass, modifyPass, nullptr};
                 AddDistNode(node);
-                /*
-                PassAttachmentBinding bindingModify = PassAttachmentBinding->GetInputBinding(0);
+
+                #else
+
+                std::string orig = modifyPass->GetName().GetCStr();
+                orig += "_rep";
+                Name newName = Name(orig.c_str());
+                Ptr<Pass> newPass = CreateDistPass(newName, modifyPass);
+                AZStd::vector<Ptr<Pass>> follows;
+
+                PassAttachmentBinding &modifyOutput = modifyPass->GetOutputBinding(0);
+                printf("Pass [%s] output [%s] attached id [%s]\n",
+                    modifyPass->GetName().GetCStr(),
+                    modifyOutput.m_name.GetCStr(),
+                    modifyOutput.m_unifiedScopeDesc.m_attachmentId.GetCStr());
                 for (auto& pass : subPasses)
                 {
-                    for (PassAttachmentBinding& binding : pass->m_attachmentBindings) {
-                        if ((uint32_t)PassSlotType::Output & (uint32_t)binding.m_slotType)
+                    PassAttachmentBinding &curInput = pass->GetInputBinding(0);
+                    if (curInput.m_unifiedScopeDesc.m_attachmentId == modifyOutput.m_unifiedScopeDesc.m_attachmentId)
+                    {
+                        printf("Pass [%s] input [%s] attached id [%s] matched\n",
+                            pass->GetName().GetCStr(),
+                            curInput.m_name.GetCStr(),
+                            curInput.m_unifiedScopeDesc.m_attachmentId.GetCStr());
+                        for (auto &conn : pass->m_request.m_connections)
                         {
-                            printf("Pass [%s] output [%s] attached id [%s] matched\n",
-                                binding.m_name.GetCStr(),
-                                binding.m_unifiedScopeDesc.m_attachmentId);
-                            if (binding.m_unifiedScopeDesc.m_attachmentId == modifyOutput->Get)
+                            if (conn.m_attachmentRef.m_pass == modifyPass->GetName())
                             {
-                                
-                            std::string orig = pass->GetName().GetCStr();
-                            orig += "_rep";
-                            Name newName = Name(orig.c_str());
-                            Ptr<Pass> newPass = CreatePass(newName, pass->GetName());
-                            struct PassDistNode node = {newPass, pass};
-                            AddDistNode(node);
+                                conn.m_attachmentRef.m_pass = newPass->GetName();
+                                conn.m_attachmentRef.m_attachment = "Output";
+                                follows.emplace_back(pass);
+                                break;
                             }
+                        }
+                        for (auto &conn : pass->m_request.m_connections)
+                        {
+                            printf("After modify pass [%s] slot [%s] connect name [%s] slot [%s]\n",
+                                pass->GetName().GetCStr(), conn.m_localSlot.GetCStr(),
+                                conn.m_attachmentRef.m_pass.GetCStr(),
+                                conn.m_attachmentRef.m_attachment.GetCStr());
                         }
                     }
                 }
-                */
+                modifyPass->m_request.m_connections.clear();
+                struct PassDistNode node = {newPass, modifyPass, follows};
+                AddDistNode(node);
+                #endif
             }
             subPasses.clear();
             UpdateDistPasses();
@@ -248,8 +281,17 @@ namespace AZ
                     itr.second.m_modify->GetName().GetCStr(), (int)itr.second.built);
                 if (!itr.second.built)
                 {
-                    itr.second.m_modify->GetParent()->AddChild(itr.second.m_self);
+                    printf("Add Pass [%s] to parent pass [%s]\n",
+                        itr.second.m_self->GetName().GetCStr(),
+                        itr.second.m_modify->GetParent()->GetName().GetCStr());
+                    //itr.second.m_modify->GetParent()->AddChild(itr.second.m_self);
+                    itr.second.m_modify->GetParent()->InsertChild(itr.second.m_self, itr.second.m_modify->m_parentChildIndex);
+                    itr.second.m_modify->Build(false);
                     itr.second.m_self->Build(false);
+                    for (auto &pass : itr.second.m_follows)
+                    {
+                        pass->Build(false);
+                    }
                     itr.second.built = true;
                 }
             }

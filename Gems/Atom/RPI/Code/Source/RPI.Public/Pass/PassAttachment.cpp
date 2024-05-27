@@ -347,7 +347,7 @@ namespace AZ
                 }
                 else if (attachment->m_lifetime == RHI::AttachmentLifetimeType::Imported)
                 {
-                    printf("SetAttachment attachment->m_importedResource is %p\n", attachment->m_importedResource);
+                    printf("SetAttachment attachment->m_importedResource is %p\n", attachment->m_importedResource.get());
                     if (attachment->m_importedResource)
                     {
                         printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
@@ -385,7 +385,7 @@ namespace AZ
             Ptr<PassAttachment> targetAttachment = nullptr;
 
             printf("UpdateConnection useFallback %d m_fallbackBinding %p m_slotType %d m_connectedBinding %p orig att %p\n",
-                (int)useFallback, m_fallbackBinding, (int)m_slotType, m_connectedBinding, m_originalAttachment);
+                (int)useFallback, m_fallbackBinding, (int)m_slotType, m_connectedBinding, m_originalAttachment.get());
 
             // Use the fallback binding if:
             // - the calling pass specifies to use it

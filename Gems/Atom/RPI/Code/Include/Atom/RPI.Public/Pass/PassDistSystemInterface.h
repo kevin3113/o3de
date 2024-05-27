@@ -38,7 +38,7 @@ namespace AZ
         struct PassDistNode {
             Ptr<Pass> m_self;
             Ptr<Pass> m_modify;
-            Ptr<Pass> m_next;
+            AZStd::vector<Ptr<Pass>> m_follows;
             bool built = false;
         };
 
