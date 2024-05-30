@@ -47,7 +47,7 @@ AZ_DEFINE_BUDGET(RPI);
 // This is useful for rendering engineers debugging a crash in the RPI/RHI layers
 #define AZ_RPI_PRINT_GLOBAL_STATE_ON_ASSERT 0
 
-AZ::RPI::RenderPipelinePtr g_dist_pipeline = nullptr;
+//AZ::RPI::RenderPipelinePtr g_dist_pipeline = nullptr;
 uint64_t g_main_pipeline_start = 1000000;
 
 namespace AZ
@@ -352,13 +352,21 @@ namespace AZ
                         if (!getenv("PASS_DISABLE"))
                             PassDistSystemInterface::Get()->Enable();
                     }
+                    RenderPipelinePtr pipeline = PassDistSystemInterface::Get()->GetDistPipeline(1);
+                    if (pipeline == nullptr)
+                    {
+                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, AZStd::string("Test_0"));
+                        scenePtr->AddRenderPipeline(pipeline);
+                    }
+                    /*
                     if (g_dist_pipeline == nullptr) {
-                        const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistMainPipeline", .m_name = "Test_0" };
-                        //const RenderPipelineDescriptor desc { .m_name = "Test_0" };
+                        //const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistMainPipeline", .m_name = "Test_0" };
+                        const RenderPipelineDescriptor desc { .m_name = "Test_0" };
                         RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
                         scenePtr->AddRenderPipeline(pipeline);
-                        g_dist_pipeline = pipeline;
+                        g_dist_pipeline = pipeline;  
                     }
+                    */
                 }
                 scenePtr->PrepareRender(m_prepareRenderJobPolicy, m_currentSimulationTime);
             }

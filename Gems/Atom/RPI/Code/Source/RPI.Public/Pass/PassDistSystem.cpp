@@ -252,6 +252,52 @@ namespace AZ
             return add;
         }
 
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node)
+        {
+            AZStd::shared_ptr<PassTemplate> passTemplate;
+            passTemplate = AZStd::make_shared<PassTemplate>();
+            passTemplate->m_name = "FullscreenShadowPassDistPreTemplate";
+            passTemplate->m_passClass = "ComputePass";
+
+            PassSlot slot;
+            PassConnection conn;
+
+            for (uint32_t i = 0; i < node->GetInputCount(); i++)
+            {
+                PassAttachmentBinding binding = node->GetInputBinding(i);
+                if (binding.m_name == Name("DirectionalShadowmaps")
+                    || binding.m_name == Name("Depth")
+                    || binding.m_name == Name("DepthLinear"))
+                {
+                    if (binding.GetAttachment()->GetAttachmentType() == RHI::AttachmentType::Buffer)
+                    {
+                        PassBufferAttachmentDesc pbd;
+                        pbd.m_name = binding.GetAttachment()->m_name;
+                        pbd.m_bufferDescriptor = binding.GetAttachment()->m_descriptor.m_buffer;
+                        passTemplate->m_bufferAttachments.emplace_back(pbd);
+                    }
+                    else
+                    {
+                        PassImageAttachmentDesc pid;
+                        pid.m_name = binding.GetAttachment()->m_name;
+                        pid.m_imageDescriptor = binding.GetAttachment()->m_descriptor.m_image;
+                        passTemplate->m_imageAttachments.emplace_back(pid);
+                    }
+                    slot.m_name = binding.m_name;
+                    slot.m_slotType = PassSlotType::InputOutput;
+                    conn.m_localSlot = slot.m_name;
+                    passTemplate->m_slots.emplace_back(slot);
+                    conn.m_attachmentRef.m_pass = "This";
+                    conn.m_attachmentRef.m_attachment = binding.GetAttachment()->m_name;
+                    passTemplate->m_connections.emplace_back(conn);
+                }
+            }
+
+            m_templates.emplace_back(passTemplate);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
+            return add;
+        }
+
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
         {
             AZStd::shared_ptr<PassTemplate> passTemplate;
@@ -272,6 +318,56 @@ namespace AZ
 
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
+            return add;
+        }
+
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node)
+        {
+            AZStd::shared_ptr<PassTemplate> passTemplate;
+            passTemplate = AZStd::make_shared<PassTemplate>();
+            passTemplate->m_name = "FullscreenShadowPassDistAfterTemplate";
+            passTemplate->m_passClass = "ComputePass";
+
+            PassSlot slot;
+            PassConnection conn;
+
+            slot.m_name = "Output";
+            slot.m_slotType = PassSlotType::InputOutput;
+            conn.m_localSlot = slot.m_name;
+            passTemplate->m_slots.emplace_back(slot);
+            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_attachment = "Output";
+            passTemplate->m_connections.emplace_back(conn);
+
+            m_templates.emplace_back(passTemplate);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
+            return add;
+        }
+
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPass(Name name, Ptr<Pass> node)
+        {
+            Name prePass = node->GetName();
+            PassConnection conn;
+            PassRequest req;
+            req.m_passName = name;
+            req.m_templateName = "FullscreenShadowTemplate";
+
+            conn.m_localSlot = "DirectionalShadowmaps";
+            conn.m_attachmentRef.m_pass = prePass;
+            conn.m_attachmentRef.m_attachment = "DirectionalShadowmaps";
+            req.m_connections.emplace_back(conn);
+
+            conn.m_localSlot = "Depth";
+            conn.m_attachmentRef.m_pass = prePass;
+            conn.m_attachmentRef.m_attachment = "Depth";
+            req.m_connections.emplace_back(conn);
+
+            conn.m_localSlot = "DepthLinear";
+            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_attachment = "DepthLinear";
+            req.m_connections.emplace_back(conn);
+            
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
             return add;
         }
 
@@ -443,6 +539,34 @@ namespace AZ
             }
             struct PassDistNode node = {prePass, pass, afterPass, follows};
             AddDistNode(node);
+            CloneFullscreenShadow(pass);
+        }
+
+        void PassDistSystem::CloneFullscreenShadow(Ptr<Pass> pass)
+        {
+            RenderPipelinePtr pipeline = GetDistPipeline(1);
+            if (pipeline == nullptr)
+            {
+                printf("CloneFullscreenShadow pipeline nullptr\n");
+                return;
+            }
+            const Ptr<ParentPass>& root = pipeline->GetRootPass();
+            if (root->GetChildren().size() > 1)
+            {
+                printf("CloneFullscreenShadow child pass not 0\n");
+                return;
+            }
+            std::string orig = pass->GetName().GetCStr();
+            std::string  preName = orig + "_DistPre";
+            std::string  distName = orig + "_Dist";
+            std::string  afterName = orig + "_DistAfter";
+            Name newName = Name(preName.c_str());
+            Ptr<Pass> prePass = CreateFullscreenShadowDistPrePass(Name(preName.c_str()), pass);
+            Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass);
+            Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass);
+            root->AddChild(prePass);
+            root->AddChild(distPass);
+            root->AddChild(afterPass);
         }
 
         void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> &root)
@@ -499,21 +623,21 @@ namespace AZ
 
         bool PassDistSystem::IsDistProcessed(Name name)
         {
-            auto itr = m_node_to_add.find(name);
-            return itr != m_node_to_add.end();
+            auto itr = m_distChangeList.find(name);
+            return itr != m_distChangeList.end();
         }
 
         void PassDistSystem::AddDistNode(struct PassDistNode &node)
         {
             printf("add new pass [%s] modify [%s]\n", node.m_self->GetName().GetCStr(),
                 node.m_modify->GetName().GetCStr());
-            auto itr = m_node_to_add.find(node.m_modify->GetName());
-            if (itr != m_node_to_add.end()) {
+            auto itr = m_distChangeList.find(node.m_modify->GetName());
+            if (itr != m_distChangeList.end()) {
                 printf("Pass [%s] has been modified by [%s]!\n",
                     node.m_modify->GetName().GetCStr(),
                     node.m_self->GetName().GetCStr());
             }
-            m_node_to_add.emplace(node.m_modify->GetName(), node);
+            m_distChangeList.emplace(node.m_modify->GetName(), node);
         }
 
         void PassDistSystem::UpdateDistPasses(void)
@@ -523,7 +647,7 @@ namespace AZ
                 printf("PassDistSystem is disabled!\n");
                 return;
             }
-            for (auto &itr : m_node_to_add)
+            for (auto &itr : m_distChangeList)
             {
                 printf("build new pass [%s] modify [%s] built %d\n", itr.second.m_self->GetName().GetCStr(),
                     itr.second.m_modify->GetName().GetCStr(), (int)itr.second.built);
@@ -551,6 +675,26 @@ namespace AZ
                     itr.second.built = true;
                 }
             }
+        }
+
+        RenderPipelinePtr PassDistSystem::CreateDistPipeline(int device, AZStd::string name)
+        {
+            const RenderPipelineDescriptor desc { .m_name = name };
+            RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
+            m_devPipelines.emplace(device, pipeline);
+            printf("PassDistSystem add pipeline [%s] on device %d\n",
+                name.c_str(), device);
+            return pipeline;
+        }
+
+        RenderPipelinePtr PassDistSystem::GetDistPipeline(int device)
+        {
+            auto itr = m_devPipelines.find(device);
+            if (itr != m_devPipelines.end())
+            {
+                return itr->second;
+            }
+            return nullptr;
         }
 
         void PassDistSystem::Enable(void)

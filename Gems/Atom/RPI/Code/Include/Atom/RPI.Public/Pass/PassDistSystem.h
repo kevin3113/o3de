@@ -57,15 +57,19 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node);
 
+            Ptr<Pass> CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node);
+
             Ptr<Pass> CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node);
+
+            Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node);
+
+            Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass> node);
 
             void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
             void ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
-            void ProcessDistChanges(Ptr<ParentPass> &root) override;
-
-            void FrameEnd(void) override;
+            void CloneFullscreenShadow(Ptr<Pass> pass);
 
             bool IsDistProcessed(Name name);
             
@@ -73,17 +77,27 @@ namespace AZ
 
             void UpdateDistPasses(void);
 
-            void Enable(void);
+            void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
-            void Disable(void);
+            RenderPipelinePtr CreateDistPipeline(int device, AZStd::string name) override;
 
-            bool IsEnable(void);
+            RenderPipelinePtr GetDistPipeline(int device) override;
+
+            void FrameEnd(void) override;
+
+            void Enable(void) override;
+
+            void Disable(void) override;
+
+            bool IsEnable(void) override;
 
         private:
             // List of pass node to be add
-            AZStd::unordered_map<Name, PassDistNode> m_node_to_add;
+            AZStd::unordered_map<Name, PassDistNode> m_distChangeList;
 
             AZStd::vector<AZStd::shared_ptr<PassTemplate>> m_templates;
+
+            AZStd::unordered_map<int, RenderPipelinePtr> m_devPipelines;
 
             bool m_state = false;
 
