@@ -226,9 +226,9 @@ namespace AZ::RHI
         const VirtualAddress heapAddress{attachment.m_heapOffsetMin};
         char *type_cstr;
         if (type == AliasedResourceType::Image)
-            type_cstr = "Image";
+            type_cstr = (char *)"Image";
         else
-            type_cstr = "Buffer";
+            type_cstr = (char *)"Buffer";
         printf("*** Deactivate%s offset %zu scope %s\n", type_cstr, (size_t)heapAddress.m_ptr, scope.GetId().GetCStr());
         m_firstFitAllocator.DeAllocate(heapAddress);
         m_firstFitAllocator.GarbageCollectForce();

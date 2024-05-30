@@ -47,8 +47,13 @@ AZ_DEFINE_BUDGET(RPI);
 // This is useful for rendering engineers debugging a crash in the RPI/RHI layers
 #define AZ_RPI_PRINT_GLOBAL_STATE_ON_ASSERT 0
 
-//AZ::RPI::RenderPipelinePtr g_dist_pipeline = nullptr;
+#define NVIDIA 1
+#define INTEL 0
 uint64_t g_main_pipeline_start = 1000000;
+int g_dev0_disable = 0;
+int g_dev1_disable = 1;
+int g_dev0_id = NVIDIA;
+int g_dev1_id = INTEL;
 
 namespace AZ
 {
@@ -86,10 +91,43 @@ namespace AZ
         void RPISystem::Initialize(const RPISystemDescriptor& rpiSystemDescriptor)
         {
             // Init RHI device(s)
-            auto commandLineMultipleDevicesValue{ RHI::GetCommandLineValue("device-count") };
-            m_rhiSystem.InitDevices((commandLineMultipleDevicesValue != "") ? AZStd::stoi(commandLineMultipleDevicesValue) : 1);
-            auto ret = g_rhiSystem.InitDevices(0);
+            //auto commandLineMultipleDevicesValue{ RHI::GetCommandLineValue("device-count") };
+            //m_rhiSystem.InitDevices((commandLineMultipleDevicesValue != "") ? AZStd::stoi(commandLineMultipleDevicesValue) : 1);
+            int initDevId = NVIDIA;
+            char *vendor = getenv("DEV0_VENDOR");
+            if (vendor && 0 == strcmp((const char *)vendor, "Intel"))
+            {
+                initDevId = INTEL;
+            }
+            m_rhiSystem.InitDevices(initDevId);
+            initDevId = INTEL;
+            vendor = getenv("DEV1_VENDOR");
+            if (vendor && 0 == strcmp((const char *)vendor, "Nvidia"))
+            {
+                initDevId = NVIDIA;
+            }
+            auto ret = g_rhiSystem.InitDevices(initDevId);
             printf("g_rhiSystem.InitDevices ret %d\n", (int)ret);
+
+            if (getenv("DISABLE_DEV0"))
+            {
+                g_dev0_disable = 1;
+            }
+            if (getenv("DISABLE_DEV1"))
+            {
+                g_dev1_disable = 1;
+            }
+            char *val = getenv("DEV0_ID");
+            if (val)
+            {
+                g_dev0_id = atoi((const char *)val);
+            }
+            val = getenv("DEV1_ID");
+            if (val)
+            {
+                g_dev1_id = atoi((const char *)val);
+            }
+
 
             // Gather asset handlers from sub-systems.
             ImageSystem::GetAssetHandlers(m_assetHandlers);
@@ -402,21 +440,42 @@ namespace AZ
                 }
             }
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
-            g_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
+            g_rhiSystem.SetNumActiveRenderPipelines(1);
 
-            m_rhiSystem.FrameUpdate(
-                [this](RHI::FrameGraphBuilder& frameGraphBuilder)
-                {
-                    // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
-                    // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
-                    m_passSystem.FrameUpdate(frameGraphBuilder);
-
-                    // Update Scene and View Srgs
-                    for (auto& scenePtr : m_scenes)
+            if (!g_dev0_disable)
+            {
+                PassDistSystemInterface::Get()->SetCurDevice(g_dev0_id);
+                m_rhiSystem.FrameUpdate(
+                    [this](RHI::FrameGraphBuilder& frameGraphBuilder)
                     {
-                        scenePtr->UpdateSrgs();
-                    }
-                });
+                        // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
+                        // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
+                        m_passSystem.FrameUpdate(frameGraphBuilder);
+
+                        // Update Scene and View Srgs
+                        for (auto& scenePtr : m_scenes)
+                        {
+                            scenePtr->UpdateSrgs();
+                        }
+                    });
+            }
+            if (!g_dev1_disable)
+            {
+                PassDistSystemInterface::Get()->SetCurDevice(g_dev1_id);
+                g_rhiSystem.FrameUpdate(
+                    [this](RHI::FrameGraphBuilder& frameGraphBuilder)
+                    {
+                        // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
+                        // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
+                        m_passSystem.FrameUpdate(frameGraphBuilder);
+
+                        // Update Scene and View Srgs
+                        for (auto& scenePtr : m_scenes)
+                        {
+                            scenePtr->UpdateSrgs();
+                        }
+                    });
+            }
 
             {
                 AZ_PROFILE_SCOPE(RPI, "RPISystem: FrameEnd");

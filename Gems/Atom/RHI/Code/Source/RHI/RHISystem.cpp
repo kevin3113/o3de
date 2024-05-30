@@ -205,6 +205,11 @@ namespace AZ::RHI
             {
                 m_devices.emplace_back(AZStd::move(device));
             }
+            const PhysicalDeviceDescriptor& devPhyDesc = m_devices[0]->GetPhysicalDevice().GetDescriptor();
+            printf("Init Device ID %d device description:\n%s\n", deviceCount, devPhyDesc.m_description.c_str());
+            printf("Init Device ID %d device type %d\n", deviceCount, (int)devPhyDesc.m_type);
+            printf("Init Device ID %d device vender id %d\n", deviceCount, (int)devPhyDesc.m_vendorId);
+            printf("Init Device ID %d device id %d\n", deviceCount, (int)devPhyDesc.m_deviceId);
         }
 
         for (auto index{ 0 }; m_devices.size() < deviceCount; index++)

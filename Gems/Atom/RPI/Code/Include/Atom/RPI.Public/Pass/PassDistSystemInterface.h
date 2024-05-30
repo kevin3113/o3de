@@ -65,6 +65,10 @@ namespace AZ
 
             virtual RenderPipelinePtr GetDistPipeline(int device) = 0;
 
+            virtual void SetCurDevice(int deviceId) = 0;
+
+            virtual int GetCurDevice(void) = 0;
+
             virtual void FrameEnd(void) = 0;
 
             virtual void Enable(void) = 0;

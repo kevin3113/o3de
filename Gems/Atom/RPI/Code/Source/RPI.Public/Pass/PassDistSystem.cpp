@@ -697,6 +697,18 @@ namespace AZ
             return nullptr;
         }
 
+        void PassDistSystem::SetCurDevice(int deviceId)
+        {
+            printf("PassDistSystem set current schedule device %d\n", deviceId);
+            m_curDevice = deviceId;
+        }
+
+        int PassDistSystem::GetCurDevice(void)
+        {
+            printf("PassDistSystem get current schedule device %d\n", m_curDevice);
+            return m_curDevice;
+        }
+
         void PassDistSystem::Enable(void)
         {
             printf("PassDistSystem set enabled!\n");

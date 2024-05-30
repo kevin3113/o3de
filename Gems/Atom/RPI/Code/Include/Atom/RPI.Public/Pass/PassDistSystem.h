@@ -83,6 +83,10 @@ namespace AZ
 
             RenderPipelinePtr GetDistPipeline(int device) override;
 
+            void SetCurDevice(int deviceId) override;
+
+            int GetCurDevice(void) override;
+
             void FrameEnd(void) override;
 
             void Enable(void) override;
@@ -98,6 +102,8 @@ namespace AZ
             AZStd::vector<AZStd::shared_ptr<PassTemplate>> m_templates;
 
             AZStd::unordered_map<int, RenderPipelinePtr> m_devPipelines;
+
+            int m_curDevice = 0;
 
             bool m_state = false;
 

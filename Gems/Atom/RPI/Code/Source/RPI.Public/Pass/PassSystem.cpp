@@ -24,6 +24,7 @@
 #include <Atom/RPI.Public/Pass/PassFactory.h>
 #include <Atom/RPI.Public/Pass/PassLibrary.h>
 #include <Atom/RPI.Public/Pass/PassSystem.h>
+#include <Atom/RPI.Public/Pass/PassDistSystem.h>
 #include <Atom/RPI.Public/Pass/PassUtils.h>
 #include <Atom/RPI.Public/Pass/Specific/SwapChainPass.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
@@ -249,6 +250,16 @@ namespace AZ
 
             for (RenderPipeline*& pipeline : m_renderPipelines)
             {
+                if (PassDistSystemInterface::Get()->GetCurDevice() == 0 // Intel
+                    && pipeline->GetId() != Name("Test_0"))
+                {
+                    continue;
+                }
+                if (PassDistSystemInterface::Get()->GetCurDevice() == 1 // Nvidia
+                    && pipeline->GetId() == Name("Test_0"))
+                {
+                    continue;
+                }
                 pipeline->PassSystemFrameBegin(params);
             }
             m_passesWithoutPipeline.m_rootPass->UpdateConnectedBindings();
