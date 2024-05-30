@@ -116,6 +116,12 @@ namespace AZ::RHI
 
         RHI::PhysicalDeviceList usePhysicalDevices;
 
+        AZStd::string preferredUserAdapterName = "Nvidia";
+        if (deviceCount == 0)
+        {
+            preferredUserAdapterName = "Intel";
+        }
+/*
         if (deviceCount > 1)
         {
             AZ_Printf("RHISystem", "\tUsing multiple devices\n");
@@ -123,8 +129,9 @@ namespace AZ::RHI
             usePhysicalDevices = AZStd::move(physicalDevices);
         }
         else
+*/        
         {
-            AZStd::string preferredUserAdapterName = RHI::GetCommandLineValue("forceAdapter");
+            //AZStd::string preferredUserAdapterName = RHI::GetCommandLineValue("forceAdapter");
             //AZStd::string preferredUserAdapterName = "Intel";
             AZStd::to_lower(preferredUserAdapterName.begin(), preferredUserAdapterName.end());
             bool findPreferredUserDevice = preferredUserAdapterName.size() > 0;

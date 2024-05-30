@@ -31,10 +31,6 @@ namespace AZ
 
     namespace RPI
     {
-        //! The central class of the pass system.
-        //! Responsible for preparing the frame and keeping 
-        //! track of which passes need rebuilding or deleting.
-        //! Holds the root of the pass hierarchy.
         class PassDistSystem final
             : public PassDistSystemInterface
         {
@@ -55,7 +51,17 @@ namespace AZ
             //! Deletes the Root Pass and shuts down the PassSystem
             void Shutdown();
 
-            Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> modify);
+            void ShowConnections(Ptr<Pass> &pass);
+
+            Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> &modify);
+
+            Ptr<Pass> CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node);
+
+            Ptr<Pass> CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node);
+
+            void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
+
+            void ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
@@ -67,9 +73,21 @@ namespace AZ
 
             void UpdateDistPasses(void);
 
+            void Enable(void);
+
+            void Disable(void);
+
+            bool IsEnable(void);
+
         private:
             // List of pass node to be add
             AZStd::unordered_map<Name, PassDistNode> m_node_to_add;
+
+            AZStd::vector<AZStd::shared_ptr<PassTemplate>> m_templates;
+
+            bool m_state = false;
+
+            Name m_modify;
 
         };
     }   // namespace RPI

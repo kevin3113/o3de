@@ -7,14 +7,14 @@
             "Name": "DistTemplate",
             "PassClass": "ComputePass",
             "Slots": [
-                {
-                    "Name": "Input",
-                    "SlotType": "Input",
-                    "ScopeAttachmentUsage": "RenderTarget"
-                },
+                // {
+                //     "Name": "Input",
+                //     "SlotType": "Input",
+                //     "ScopeAttachmentUsage": "RenderTarget"
+                // },
                 {
                     "Name": "Output",
-                    "SlotType": "Output",
+                    "SlotType": "InputOutput",
                     "ScopeAttachmentUsage": "RenderTarget"
                 }
             ]

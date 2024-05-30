@@ -38,6 +38,8 @@
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 
+#include <stdlib.h>
+
 AZ_DEFINE_BUDGET(AzRender);
 AZ_DEFINE_BUDGET(RPI);
 
@@ -46,6 +48,7 @@ AZ_DEFINE_BUDGET(RPI);
 #define AZ_RPI_PRINT_GLOBAL_STATE_ON_ASSERT 0
 
 AZ::RPI::RenderPipelinePtr g_dist_pipeline = nullptr;
+uint64_t g_main_pipeline_start = 1000000;
 
 namespace AZ
 {
@@ -85,7 +88,7 @@ namespace AZ
             // Init RHI device(s)
             auto commandLineMultipleDevicesValue{ RHI::GetCommandLineValue("device-count") };
             m_rhiSystem.InitDevices((commandLineMultipleDevicesValue != "") ? AZStd::stoi(commandLineMultipleDevicesValue) : 1);
-            auto ret = g_rhiSystem.InitDevices(1);
+            auto ret = g_rhiSystem.InitDevices(0);
             printf("g_rhiSystem.InitDevices ret %d\n", (int)ret);
 
             // Gather asset handlers from sub-systems.
@@ -344,199 +347,17 @@ namespace AZ
                 if (strcmp(scenePtr->GetName().GetCStr(), "Main") == 0) {
                     //printf("---------- Deactivate Main Scene ----------\n");
                     // Distribute System
+                    if (m_renderTick > (g_main_pipeline_start + 10))
+                    {
+                        if (!getenv("PASS_DISABLE"))
+                            PassDistSystemInterface::Get()->Enable();
+                    }
                     if (g_dist_pipeline == nullptr) {
                         const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistMainPipeline", .m_name = "Test_0" };
+                        //const RenderPipelineDescriptor desc { .m_name = "Test_0" };
                         RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
                         scenePtr->AddRenderPipeline(pipeline);
                         g_dist_pipeline = pipeline;
-                        #if 0
-                        const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistPipeline", .m_name = "Test_0" };
-                        RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
-                        scenePtr->AddRenderPipeline(pipeline);
-                        g_dist_pipeline = pipeline;
-                        const Ptr<ParentPass>& root = pipeline->GetRootPass();
-                        /*
-                        PassAttachmentBinding binding;
-                        binding.m_name = "InputOutput";
-                        binding.m_slotType = PassSlotType::InputOutput;
-                        root->AddAttachmentBinding(binding);
-
-                        CommonBufferDescriptor cbd;
-                        cbd.m_bufferName = "dist_0_input";
-                        cbd.m_poolType = CommonBufferPoolType::ReadBack;
-                        cbd.m_byteCount = 1024;
-                        Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        root->AttachBufferToSlot(Name("InputOutput"), buf);
-                        */
-                        PassAttachmentBinding inputBinding;
-                        inputBinding.m_name = "Input";
-                        inputBinding.m_slotType = PassSlotType::Input;
-
-                        PassAttachmentBinding outputBinding;
-                        outputBinding.m_name = "Output";
-                        outputBinding.m_slotType = PassSlotType::Output;
-
-                        PassBufferAttachmentDesc pbd;
-                        PassConnection conn;
-                        PassRequest req;
-                        req.m_passName = "PassA_0";
-                        req.m_templateName = "DistTemplate";
-                        pbd.m_name = "a_0_output";
-                        pbd.m_bufferDescriptor.m_byteCount = 1024;
-                        req.m_bufferAttachmentOverrides.emplace_back(pbd);
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "Parent";
-                        conn.m_attachmentRef.m_attachment = "InputOutput";
-                        req.AddInputConnection(conn);
-                        conn.m_localSlot = "Output";
-                        conn.m_attachmentRef.m_pass = "This";
-                        conn.m_attachmentRef.m_attachment = "a_0_output";
-                        req.AddInputConnection(conn);
-                        Ptr<Pass> sp_0 = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-                        sp_0->AddAttachmentBinding(inputBinding);
-                        sp_0->AddAttachmentBinding(outputBinding);
-
-                        req.m_passName = "PassB_0";
-                        req.m_templateName = "DistTemplate";
-                        pbd.m_name = "b_0_output";
-                        pbd.m_bufferDescriptor.m_byteCount = 1024;
-                        req.m_bufferAttachmentOverrides.emplace_back(pbd);
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "PassA_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        req.AddInputConnection(conn);
-                        conn.m_localSlot = "Output";
-                        conn.m_attachmentRef.m_pass = "This";
-                        conn.m_attachmentRef.m_attachment = "b_0_output";
-                        req.AddInputConnection(conn);
-                        Ptr<Pass> sd_0 = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-                        sd_0->AddAttachmentBinding(inputBinding);
-                        sd_0->AddAttachmentBinding(outputBinding);
-
-                        req.m_passName = "PassC_0";
-                        req.m_templateName = "DistTemplate";
-                        pbd.m_name = "c_0_output";
-                        pbd.m_bufferDescriptor.m_byteCount = 1024;
-                        req.m_bufferAttachmentOverrides.emplace_back(pbd);
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "PassB_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        req.AddInputConnection(conn);
-                        conn.m_localSlot = "Output";
-                        conn.m_attachmentRef.m_pass = "This";
-                        conn.m_attachmentRef.m_attachment = "c_0_output";
-                        req.AddInputConnection(conn);
-                        Ptr<Pass> wt_0 = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-                        wt_0->AddAttachmentBinding(inputBinding);
-                        wt_0->AddAttachmentBinding(outputBinding);
-
-                        req.m_passName = "PassD_0";
-                        req.m_templateName = "DistTemplate";
-                        pbd.m_name = "d_0_output";
-                        pbd.m_bufferDescriptor.m_byteCount = 1024;
-                        req.m_bufferAttachmentOverrides.emplace_back(pbd);
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "PassC_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        req.AddInputConnection(conn);
-                        conn.m_localSlot = "Output";
-                        conn.m_attachmentRef.m_pass = "This";
-                        conn.m_attachmentRef.m_attachment = "d_0_output";
-                        req.AddInputConnection(conn);
-                        Ptr<Pass> mg_0 = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-                        mg_0->AddAttachmentBinding(inputBinding);
-                        mg_0->AddAttachmentBinding(outputBinding);
-
-                        root->AddChild(sp_0);
-                        root->AddChild(sd_0);
-                        root->AddChild(wt_0);
-                        root->AddChild(mg_0);
-
-                        #endif
-
-                        #if 0
-                        
-                        PassAttachmentBinding binding;
-                        binding.m_name = "InputOutput";
-                        binding.m_slotType = PassSlotType::InputOutput;
-                        root->AddAttachmentBinding(binding);
-
-                        binding.m_name = "Input";
-                        binding.m_slotType = PassSlotType::Input;
-                        sp_0->AddAttachmentBinding(binding);
-                        sd_0->AddAttachmentBinding(binding);
-                        wt_0->AddAttachmentBinding(binding);
-                        mg_0->AddAttachmentBinding(binding);
-
-                        binding.m_name = "Output";
-                        binding.m_slotType = PassSlotType::Output;
-                        sp_0->AddAttachmentBinding(binding);
-                        sd_0->AddAttachmentBinding(binding);
-                        wt_0->AddAttachmentBinding(binding);
-                        mg_0->AddAttachmentBinding(binding);
-
-                        root->AddChild(sp_0);
-                        root->AddChild(sd_0);
-                        root->AddChild(wt_0);
-                        root->AddChild(mg_0);
-
-                        CommonBufferDescriptor cbd;
-                        cbd.m_bufferName = "dist_0_input";
-                        cbd.m_poolType = CommonBufferPoolType::ReadBack;
-                        cbd.m_byteCount = 1024;
-                        Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        root->AttachBufferToSlot(Name("InputOutput"), buf);
-
-                        //cbd.m_bufferName = "split_0_input";
-                        //Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        //sp_0->AttachBufferToSlot(Name("Input"), buf);
-                        cbd.m_bufferName = "split_0_output";
-                        buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        sp_0->AttachBufferToSlot(Name("Output"), buf);
-
-                        //cbd.m_bufferName = "send_0_input";
-                        //Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        //sd_0->AttachBufferToSlot(Name("Input"), buf);
-                        cbd.m_bufferName = "send_0_output";
-                        buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        sd_0->AttachBufferToSlot(Name("Output"), buf);
-
-                        //cbd.m_bufferName = "wait_0_input";
-                        //Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        //wt_0->AttachBufferToSlot(Name("Input"), buf);
-                        cbd.m_bufferName = "wait_0_output";
-                        buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        wt_0->AttachBufferToSlot(Name("Output"), buf);
-
-                        //cbd.m_bufferName = "merge_0_input";
-                        //Data::Instance<Buffer> buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        //mg_0->AttachBufferToSlot(Name("Input"), buf);
-                        cbd.m_bufferName = "merge_0_output";
-                        buf = BufferSystemInterface::Get()->CreateBufferFromCommonPool(cbd);
-                        mg_0->AttachBufferToSlot(Name("Output"), buf);
-                        /*
-                        PassConnection conn;
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "Parent";
-                        conn.m_attachmentRef.m_attachment = "InputOutput";
-                        sp_0->ProcessConnection(conn, (uint32_t)PassSlotType::Input);
-
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "Split_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        sd_0->ProcessConnection(conn, (uint32_t)PassSlotType::Input);
-
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "SendToAll_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        wt_0->ProcessConnection(conn, (uint32_t)PassSlotType::Input);
-
-                        conn.m_localSlot = "Input";
-                        conn.m_attachmentRef.m_pass = "WaitForAll_0";
-                        conn.m_attachmentRef.m_attachment = "Output";
-                        mg_0->ProcessConnection(conn, (uint32_t)PassSlotType::Input);
-                        */
-                       #endif
                     }
                 }
                 scenePtr->PrepareRender(m_prepareRenderJobPolicy, m_currentSimulationTime);
@@ -544,12 +365,34 @@ namespace AZ
 
             //Collect all the active pipelines running in this frame.
             uint16_t numActiveRenderPipelines = 0;
+            bool mainPipelineActive = false;
             for (auto& scenePtr : m_scenes)
             {
                 numActiveRenderPipelines += scenePtr->GetActiveRenderPipelines();
                 printf("Scene %s has %u active render pipelines\n", scenePtr->GetName().GetCStr(), scenePtr->GetActiveRenderPipelines());
+                for (RenderPipelinePtr pipeline : scenePtr->GetRenderPipelines())
+                {
+                    if (strstr(pipeline->GetId().GetCStr(), "MainPipeline")) {
+                        if (pipeline->NeedsRender()) {
+                            printf("Main Pipeline [%s] is active!\n", pipeline->GetId().GetCStr());
+                            mainPipelineActive = true;
+                        }
+                    }
+                }
             }
             printf("numActiveRenderPipelines number is %u\n", numActiveRenderPipelines);
+            if (mainPipelineActive && numActiveRenderPipelines == 3)
+            {
+                if (g_main_pipeline_start > m_renderTick)
+                {
+                    g_main_pipeline_start = m_renderTick;
+                    printf("### Main pipeline started!\n");
+                }
+                if (PassDistSystemInterface::Get()->IsEnable())
+                {
+                    printf("### Test pipeline started!\n");
+                }
+            }
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
             g_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
 

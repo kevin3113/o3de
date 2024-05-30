@@ -79,6 +79,10 @@ namespace AZ
                 m_viewTag = m_passData->m_pipelineViewTag;
             }
 
+            printf("Pass [%s] path [%s] create from template %d request %d\n",
+                m_name.GetCStr(), m_path.GetCStr(), (int)(descriptor.m_passTemplate != nullptr),
+                (int)(descriptor.m_passRequest != nullptr));
+
             m_flags.m_enabled = true;
             m_flags.m_timestampQueryEnabled = false;
             m_flags.m_pipelineStatisticsQueryEnabled = false;
@@ -435,6 +439,9 @@ namespace AZ
             attachment->m_importedResource = buffer;
             m_ownedAttachments.push_back(attachment);
 
+            printf("Pass [%s] AttachBufferToSlot create atta [%s]\n", GetName().GetCStr(),
+                attachment->GetAttachmentId().GetCStr());
+
             localBinding->SetOriginalAttachment(attachment);
         }
         
@@ -465,6 +472,9 @@ namespace AZ
             Ptr<PassAttachment> attachment = CreateAttachmentFromDesc(desc);
             attachment->m_importedResource = image;
             m_ownedAttachments.push_back(attachment);
+
+            printf("Pass [%s] AttachImageToSlot create atta [%s]\n", GetName().GetCStr(),
+                attachment->GetAttachmentId().GetCStr());
 
             localBinding->SetOriginalAttachment(attachment);
         }               
@@ -519,7 +529,8 @@ namespace AZ
                 foundPass = true;
                 attachment = FindOwnedAttachment(connectedSlotName);
 
-                printf("Conntect pass [%s] is This atta %p\n", GetName().GetCStr(), attachment.get());
+                printf("Conntect pass [%s] is This attref [%s] atta %p\n", GetName().GetCStr(),
+                    connectedSlotName.GetCStr(), attachment.get());
 
                 AZ_RPI_PASS_ERROR(
                     attachment, "%s: Current Pass doesn't own an attachment named [%s].", prefix().c_str(), connectedSlotName.GetCStr());
@@ -579,8 +590,8 @@ namespace AZ
                     Ptr<Pass> siblingPass = m_parent->FindChildPass(connectedPassName);
                     if (siblingPass)
                     {
-                        printf("attachment of child pass [%s] find [%s]\n", GetName().GetCStr(),
-                            siblingPass->GetName().GetCStr());
+                        printf("attachment of child pass [%s] find [%s] slot [%s]\n", GetName().GetCStr(),
+                            siblingPass->GetName().GetCStr(), connectedSlotName.GetCStr());
                         foundPass = true;
                         connectedBinding = siblingPass->FindAttachmentBinding(connectedSlotName);
 
@@ -591,7 +602,8 @@ namespace AZ
                             printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
                                 (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
                     }
-                    printf("attachment of child pass [%s] find [%p]\n", GetName().GetCStr(), siblingPass);
+                    printf("attachment of child pass [%s] find [%p] of [%s]\n", GetName().GetCStr(), siblingPass.get(),
+                        connectedPassName.GetCStr());
                 }
             }
 
@@ -641,7 +653,8 @@ namespace AZ
             }
             else if (attachment)
             {
-                printf("attachment check pass [%s] not null\n", GetName().GetCStr());
+                printf("attachment check pass [%s] not null id [%s]\n", GetName().GetCStr(),
+                    attachment->GetAttachmentId().GetCStr());
                 localBinding->SetOriginalAttachment(attachment);
             }
             else
@@ -811,7 +824,10 @@ namespace AZ
                 if (m_ownedAttachments[i]->m_name == desc.m_name)
                 {
                     // Override it
-                    m_ownedAttachments[i] = CreateAttachmentFromDesc(desc);
+                    auto attachment = CreateAttachmentFromDesc(desc);
+                    m_ownedAttachments[i] = attachment;
+                    printf("Pass [%s] OverrideOrAddAttachment update atta [%s]\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr());
                     overrideAttachment = true;
                     break;
                 }
@@ -821,7 +837,10 @@ namespace AZ
             if (!overrideAttachment)
             {
                 // Create a new one
-                m_ownedAttachments.emplace_back(CreateAttachmentFromDesc(desc));
+                auto attachment = CreateAttachmentFromDesc(desc);
+                m_ownedAttachments.emplace_back(attachment);
+                printf("Pass [%s] OverrideOrAddAttachment create atta [%s]\n", GetName().GetCStr(),
+                    attachment->GetAttachmentId().GetCStr());
             }
         }
 
@@ -950,12 +969,18 @@ namespace AZ
                 // Create image attachments
                 for (const PassImageAttachmentDesc& desc : m_template->m_imageAttachments)
                 {
-                    m_ownedAttachments.emplace_back(CreateAttachmentFromDesc(desc));
+                    auto attachment = CreateAttachmentFromDesc(desc);
+                    m_ownedAttachments.emplace_back(attachment);
+                    printf("Pass [%s] CreateAttachmentsFromTemplate image create atta [%s]\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr());
                 }
                 // Create buffer attachments
                 for (const PassBufferAttachmentDesc& desc : m_template->m_bufferAttachments)
                 {
-                    m_ownedAttachments.emplace_back(CreateAttachmentFromDesc(desc));
+                    auto attachment = CreateAttachmentFromDesc(desc);
+                    m_ownedAttachments.emplace_back(attachment);
+                    printf("Pass [%s] CreateAttachmentsFromTemplate buffer create atta [%s]\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr());
                 }
             }
         }
