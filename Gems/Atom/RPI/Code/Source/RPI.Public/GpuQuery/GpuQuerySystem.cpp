@@ -18,6 +18,8 @@
 
 #include <AzCore/Interface/Interface.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -97,6 +99,7 @@ namespace AZ
 
         void GpuQuerySystem::CacheFeatureSupport()
         {
+            print_stack();
             // Use the device that is registered with the RHISystemInterface
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
 

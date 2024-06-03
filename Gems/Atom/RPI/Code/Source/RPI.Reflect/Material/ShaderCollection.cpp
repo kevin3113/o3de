@@ -11,6 +11,7 @@
 #include <Atom/RPI.Reflect/Material/ShaderCollection.h>
 #include <Atom/RHI/RHISystemInterface.h>
 #include <Atom/RHI/DrawListTagRegistry.h>
+#include <AzCore/Debug/CStackTrace.h>
 
 namespace AZ
 {
@@ -248,6 +249,7 @@ namespace AZ
                 return;
             }
 
+            print_stack();
             RHI::DrawListTagRegistry* drawListTagRegistry = RHI::RHISystemInterface::Get()->GetDrawListTagRegistry();
             // Note: we should use FindTag instead of AcquireTag to avoid occupy DrawListTag entries. 
             RHI::DrawListTag newTag = drawListTagRegistry->FindTag(drawListName);

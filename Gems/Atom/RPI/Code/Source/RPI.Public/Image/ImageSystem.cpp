@@ -31,6 +31,8 @@
 #include <AzCore/Math/Color.h>
 #include <AzCore/Settings/SettingsRegistry.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 AZ_DECLARE_BUDGET(RPI);
 
 namespace AZ
@@ -133,6 +135,7 @@ namespace AZ
 
         void ImageSystem::Init(const ImageSystemDescriptor& desc)
         {
+            print_stack();
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
 
             // Register attachment image instance database.
@@ -432,6 +435,7 @@ namespace AZ
                     RHI::ImageBindFlags::Color | RHI::ImageBindFlags::DepthStencil |
                     RHI::ImageBindFlags::CopyRead | RHI::ImageBindFlags::CopyWrite;
 
+                print_stack();
                 RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
                 if (RHI::CheckBitsAll(device->GetFeatures().m_shadingRateTypeMask, RHI::ShadingRateTypeFlags::PerRegion))
                 {

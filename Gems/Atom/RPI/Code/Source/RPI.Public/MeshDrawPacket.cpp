@@ -16,6 +16,7 @@
 #include <Atom/RHI/RHISystemInterface.h>
 #include <AzCore/Console/Console.h>
 #include <Atom/RPI.Public/Shader/ShaderReloadDebugTracker.h>
+#include <AzCore/Debug/CStackTrace.h>
 
 namespace AZ
 {
@@ -258,6 +259,7 @@ namespace AZ
                 // if the mesh is not going to be rendered based on the draw tag
                 RHI::RHISystemInterface* rhiSystem = RHI::RHISystemInterface::Get();
                 RHI::DrawListTagRegistry* drawListTagRegistry = rhiSystem->GetDrawListTagRegistry();
+                print_stack();
 
                 // Use the explicit draw list override if exists.
                 RHI::DrawListTag drawListTag = shaderItem.GetDrawListTagOverride();

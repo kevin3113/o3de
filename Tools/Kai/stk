@@ -1,0 +1,4 @@
+#!/bin/bash
+
+script_dir=$(dirname $(realpath $0))
+python3 ${script_dir}/stk.py "$@"

@@ -40,29 +40,7 @@
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
 #include <Atom/RPI.Reflect/Pass/RenderPassData.h>
 #include <Atom/RPI.Reflect/Pass/SlowClearPassData.h>
-#include <string.h>
-#include <stdlib.h>
-
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <signal.h>
-#define gettid() syscall(SYS_gettid)
-
-#include <execinfo.h>
-namespace {
-static void print_stack_pds(void)
-{
-    void *stack[32];
-    char **msg;
-    int sz = backtrace(stack, 32);
-    msg = backtrace_symbols(stack, sz);
-    printf("[bt] #0 thread %d\n", (int)gettid());
-    for (int i = 1; i < sz; i++) {
-        printf("[bt] #%d %s\n", i, msg[i]);
-    }
-}
-}
-#define print_stack print_stack_pds
+#include <AzCore/Debug/CStackTrace.h>
 
 namespace AZ
 {

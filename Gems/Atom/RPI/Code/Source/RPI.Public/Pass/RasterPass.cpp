@@ -21,6 +21,8 @@
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -101,6 +103,7 @@ namespace AZ
 
         void RasterPass::SetDrawListTag(Name drawListName)
         {
+            print_stack();
             // Use AcquireTag to register a draw list tag if it doesn't exist. 
             RHI::RHISystemInterface* rhiSystem = RHI::RHISystemInterface::Get();
             m_drawListTag = rhiSystem->GetDrawListTagRegistry()->AcquireTag(drawListName);

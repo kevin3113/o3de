@@ -19,6 +19,8 @@
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <AzCore/Interface/Interface.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -36,6 +38,7 @@ namespace AZ
 
         void BufferSystem::Init()
         {
+            print_stack();
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
 
             {
@@ -93,6 +96,7 @@ namespace AZ
             {
                 return false;
             }
+            print_stack();
             auto* device = RHI::RHISystemInterface::Get()->GetDevice();
             
             RHI::Ptr<RHI::BufferPool> bufferPool = RHI::Factory::Get().CreateBufferPool();

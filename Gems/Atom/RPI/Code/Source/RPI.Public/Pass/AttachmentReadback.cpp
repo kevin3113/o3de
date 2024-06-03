@@ -28,6 +28,8 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -118,6 +120,7 @@ namespace AZ
                 m_isReadbackComplete.push_back(false);
             }
             
+            print_stack();
             // Create fence
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
             m_fence = RHI::Factory::Get().CreateFence();

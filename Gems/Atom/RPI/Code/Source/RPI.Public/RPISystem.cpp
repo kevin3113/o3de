@@ -38,7 +38,15 @@
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 
-#include <stdlib.h>
+#include <AzCore/Debug/CStackTrace.h>
+
+void handle_signal(int sig)
+{
+    printf("recv signal %d\n", sig);
+    print_stack();
+    exit(1);
+}
+sighandler_t g_handler = signal(11, handle_signal);
 
 AZ_DEFINE_BUDGET(AzRender);
 AZ_DEFINE_BUDGET(RPI);

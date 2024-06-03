@@ -265,7 +265,8 @@ pass 增加attachment
 AttachBufferToSlot
 
 引入连接关系到RHI
-Pass::FrameBegin -> Pass::ImportAttachments -> attachmentDatabase.ImportImage
+Pass::
+FrameBegin -> Pass::ImportAttachments -> attachmentDatabase.ImportImage
                                                attachmentDatabase.ImportBuffer
                     Pass::CreateTransientAttachments -> attachmentDatabase.CreateTransientImage
                                                         attachmentDatabase.CreateTransientBuffer
@@ -348,3 +349,80 @@ RenderTick -> Scene::PrepareRender -> RenderPipeline::OnStartFrame -> RenderPipe
            
 修改pass依赖关系2种方式: template/request, request > template
 pass的依赖关系与pass在pipeline上的顺序有关系
+
+const PhysicalDevice& GetPhysicalDevice() 
+const PhysicalDeviceDescriptor& GetDescriptor()
+
+        AZStd::string m_description;
+        PhysicalDeviceType m_type = PhysicalDeviceType::Unknown;
+        VendorId m_vendorId = VendorId::Unknown;
+        uint32_t m_deviceId = 0;
+        uint32_t m_driverVersion = 0;
+        
+#include <AzCore/Debug/CStackTrace.h>
+
+
+多device:
+1、RPISystem::Initialize:
+m_querySystem.Init(m_descriptor.m_gpuQuerySystemDescriptor);
+CacheFeatureSupport:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/GpuQuery/GpuQuerySystem.cpp:102
+QueryPool:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/GpuQuery/QueryPool.cpp:54
+
+2、RPISystem::InitializeSystemAssets:
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Image/ImageSystem.cpp:138
+CreateDefaultResources:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Image/ImageSystem.cpp:438
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Buffer/BufferSystem.cpp:41
+ CreateCommonBufferPool:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Buffer/BufferSystem.cpp:99
+ 
+3、scene/view初始化
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/ShaderResourceGroupPool.cpp:52
+AZ::RPI::ShaderResourceGroup::Create(AZ::Data::Asset<AZ::RPI::ShaderAsset> const&, AZ::Name const&)
+[bt] #0 thread 245983 Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/ShaderResourceGroupPool.cpp:52 info [None]
+AZ::RPI::ShaderResourceGroupPool::CreateInternal(AZ::RPI::ShaderAsset&, AZStd::any const*)
+AZStd::intrusive_ptr<AZ::RPI::ShaderResourceGroupPool> AZStd::Internal::function_util::get_invoker<AZStd::intrusive_ptr<AZ::RPI::ShaderResourceGroupPool> (AZ::Data::AssetData*, AZStd::any const*), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::RPI::ShaderSystem::Init()::{lambda(AZ::Data::AssetData*, AZStd::any const*)#3}>(AZStd::Internal::function_util::function_buffer&, AZ::Data::AssetData*&&, AZStd::any const*&&)
+AZ::Data::InstanceDatabase<AZ::RPI::ShaderResourceGroupPool>::EmplaceInstance(AZ::Data::InstanceId const&, AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::Data::InstanceDatabase<AZ::RPI::ShaderResourceGroupPool>::FindOrCreate(AZ::Data::InstanceId const&, AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::RPI::ShaderResourceGroupPool::FindOrCreate(AZ::Data::Asset<AZ::RPI::ShaderAsset> const&, AZ::RHI::Handle<unsigned int, AZ::RPI::ShaderAsset> const&, AZ::Name const&)
+AZ::RPI::ShaderResourceGroup::Init(AZ::RPI::ShaderAsset&, AZ::RHI::Handle<unsigned int, AZ::RPI::ShaderAsset> const&, AZ::Name const&) [clone .part.0]
+AZ::RPI::ShaderResourceGroup::CreateInternal(AZ::RPI::ShaderAsset&, AZStd::any const*)
+AZStd::intrusive_ptr<AZ::RPI::ShaderResourceGroup> AZStd::Internal::function_util::get_invoker<AZStd::intrusive_ptr<AZ::RPI::ShaderResourceGroup> (AZ::Data::AssetData*, AZStd::any const*), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::RPI::ShaderSystem::Init()::{lambda(AZ::Data::AssetData*, AZStd::any const*)#2}>(AZStd::Internal::function_util::function_buffer&, AZ::Data::AssetData*&&, AZStd::any const*&&)
+AZ::Data::InstanceDatabase<AZ::RPI::ShaderResourceGroup>::EmplaceInstance(AZ::Data::InstanceId const&, AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::Data::InstanceDatabase<AZ::RPI::ShaderResourceGroup>::Create(AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::RPI::ShaderResourceGroup::Create(AZ::Data::Asset<AZ::RPI::ShaderAsset> const&, AZ::Name const&)
+AZ::RPI::View::TryCreateShaderResourceGroup() [clone .part.0]
+AZ::RPI::View::View(AZ::Name const&, AZ::RPI::View::UsageFlags)
+AZ::RPI::View::CreateView(AZ::Name const&, AZ::RPI::View::UsageFlags)
+AZ::RPI::ViewGroup::CreateMainView(AZ::Name) [clone .part.0]
+AZ::RPI::ViewportContextManager::GetOrCreateViewStackForContext(AZ::Name const&)
+AZ::RPI::ViewportContextManager::RegisterViewportContext(AZ::Name const&, AZStd::shared_ptr<AZ::RPI::ViewportContext>)
+AZ::RPI::ViewportContextManager::CreateViewportContext(AZ::Name const&, AZ::RPI::ViewportContextRequestsInterface::CreationParameters const&)
+AtomToolsFramework::RenderViewportWidget::InitializeViewportContext(int) [clone .part.0]
+
+
+LoadPipelineLibrary:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:295
+[bt] #0 thread 245983 GetPipelineLibraryPath:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:92 info [None]
+AZ::RPI::Shader::CreateInternal(AZ::RPI::ShaderAsset&, AZStd::any const*)
+AZStd::intrusive_ptr<AZ::RPI::Shader> AZStd::Internal::function_util::get_invoker<AZStd::intrusive_ptr<AZ::RPI::Shader> (AZ::Data::AssetData*, AZStd::any const*), AZStd::Internal::function_util::function_obj_tag, AZStd::allocator>::call<AZ::RPI::ShaderSystem::Init()::{lambda(AZ::Data::AssetData*, AZStd::any const*)#1}>(AZStd::Internal::function_util::function_buffer&, AZ::Data::AssetData*&&, AZStd::any const*&&)
+AZ::Data::InstanceDatabase<AZ::RPI::Shader>::EmplaceInstance(AZ::Data::InstanceId const&, AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::Data::InstanceDatabase<AZ::RPI::Shader>::FindOrCreate(AZ::Data::InstanceId const&, AZ::Data::Asset<AZ::Data::AssetData> const&, AZStd::any const*)
+AZ::RPI::Shader::FindOrCreate(AZ::Data::Asset<AZ::RPI::ShaderAsset> const&, AZ::Name const&)
+AZ::RPI::LoadShader(AZ::Data::AssetId, AZStd::basic_string<char, AZStd::char_traits<char>, AZStd::allocator> const&, AZStd::basic_string<char, AZStd::char_traits<char>, AZStd::allocator> const&)
+AZ::RPI::LoadCriticalShader(AZStd::basic_string<char, AZStd::char_traits<char>, AZStd::allocator> const&, AZStd::basic_string<char, AZStd::char_traits<char>, AZStd::allocator> const&)
+AZ::Render::DiffuseProbeGridFeatureProcessor::Activate()
+AZ::RPI::Scene::Activate()
+AZ::Render::Bootstrap::BootstrapSystemComponent::GetOrCreateAtomSceneFromAzScene(AzFramework::Scene*)
+AtomToolsFramework::RenderViewportWidget::SetScene(AZStd::shared_ptr<AzFramework::Scene> const&, bool)
+[bt] #12 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget11UpdateSceneEv+0x83) [0x7fcd27885133]
+[bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN20EditorViewportWidget13SetViewportIdEi+0x161) [0x7fcd27889d31]
+CLayoutViewPane::AttachViewport(QWidget*)
+CLayoutViewPane::SetViewClass(QString const&)
+CLayoutWnd::BindViewport(CLayoutViewPane*, QString const&, QWidget*)
+CLayoutWnd::MaximizeViewport(int)
+CLayoutWnd::LoadConfig()
+[bt] #19 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow17InitCentralWidgetEv+0x174) [0x7fcd27cb0354]
+[bt] #20 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow10InitializeEv+0x80) [0x7fcd27cb3530]
+[bt] #21 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp12InitInstanceEv+0x8f8) [0x7fcd27d16038]
+[bt] #22 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x47e) [0x7fcd27d19e5e]
+
+4、draw packet:
+SetDrawListTag:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RasterPass.cpp:106

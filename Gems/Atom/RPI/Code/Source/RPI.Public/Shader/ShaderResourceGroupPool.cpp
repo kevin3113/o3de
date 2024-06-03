@@ -14,6 +14,8 @@
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -47,6 +49,7 @@ namespace AZ
         RHI::ResultCode ShaderResourceGroupPool::Init(
             ShaderAsset& shaderAsset, const SupervariantIndex& supervariantIndex, const AZ::Name& srgName)
         {
+            print_stack();
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
 
             m_pool = RHI::Factory::Get().CreateShaderResourceGroupPool();

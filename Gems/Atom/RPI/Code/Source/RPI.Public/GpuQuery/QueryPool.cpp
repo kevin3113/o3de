@@ -15,6 +15,8 @@
 #include <Atom/RPI.Public/GpuQuery/GpuQuerySystem.h>
 #include <Atom/RPI.Public/GpuQuery/QueryPool.h>
 
+#include <AzCore/Debug/CStackTrace.h>
+
 namespace AZ
 {
     namespace RPI
@@ -49,6 +51,7 @@ namespace AZ
 
         QueryPool::QueryPool(uint32_t queryCapacity, uint32_t queriesPerResult, RHI::QueryType queryType, RHI::PipelineStatisticsFlags statisticsFlags)
         {
+            print_stack();
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
 
             m_queryCapacity = queryCapacity;
