@@ -259,7 +259,7 @@ namespace AZ
                 // if the mesh is not going to be rendered based on the draw tag
                 RHI::RHISystemInterface* rhiSystem = RHI::RHISystemInterface::Get();
                 RHI::DrawListTagRegistry* drawListTagRegistry = rhiSystem->GetDrawListTagRegistry();
-                print_stack();
+                //print_stack();
 
                 // Use the explicit draw list override if exists.
                 RHI::DrawListTag drawListTag = shaderItem.GetDrawListTagOverride();

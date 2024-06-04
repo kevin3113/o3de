@@ -51,7 +51,7 @@ namespace AZ
 
         QueryPool::QueryPool(uint32_t queryCapacity, uint32_t queriesPerResult, RHI::QueryType queryType, RHI::PipelineStatisticsFlags statisticsFlags)
         {
-            print_stack();
+            //print_stack();
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
 
             m_queryCapacity = queryCapacity;

@@ -398,11 +398,29 @@ namespace AZ
                         if (!getenv("PASS_DISABLE"))
                             PassDistSystemInterface::Get()->Enable();
                     }
+                    RenderPipelinePtr def =  scenePtr->GetDefaultRenderPipeline();
                     RenderPipelinePtr pipeline = PassDistSystemInterface::Get()->GetDistPipeline(1);
                     if (pipeline == nullptr)
                     {
-                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, AZStd::string("Test_0"));
+                        const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0"), .m_renderSettings = 
+                            def->GetDescriptor().m_renderSettings};
+                        printf("Create pipeline [%s] setting from [%s] size 0x %x_%x_%x\n",
+                            desc.m_name.c_str(), def->GetId().GetCStr(),
+                            def->GetDescriptor().m_renderSettings.m_size.m_width,
+                            def->GetDescriptor().m_renderSettings.m_size.m_height,
+                            def->GetDescriptor().m_renderSettings.m_size.m_depth);
+                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
                         scenePtr->AddRenderPipeline(pipeline);
+                    }
+                    else
+                    {
+                        PipelineRenderSettings& setting = pipeline->GetRenderSettings();
+                        setting = def->GetRenderSettings();
+                        printf("update pipeline [%s] setting from [%s] size 0x %x_%x_%x\n",
+                            pipeline->GetId().GetCStr(), def->GetId().GetCStr(),
+                            def->GetRenderSettings().m_size.m_width,
+                            def->GetRenderSettings().m_size.m_height,
+                            def->GetRenderSettings().m_size.m_depth);
                     }
                     /*
                     if (g_dist_pipeline == nullptr) {

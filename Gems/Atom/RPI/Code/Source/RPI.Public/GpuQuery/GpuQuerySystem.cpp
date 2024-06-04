@@ -99,7 +99,7 @@ namespace AZ
 
         void GpuQuerySystem::CacheFeatureSupport()
         {
-            print_stack();
+            //print_stack();
             // Use the device that is registered with the RHISystemInterface
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
 

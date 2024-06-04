@@ -34,6 +34,7 @@ namespace AZ
         class PassTemplate;
         class ParentPass;
         class SwapChainPass;
+        struct RenderPipelineDescriptor;
 
         struct PassDistNode {
             Ptr<Pass> m_self;
@@ -61,7 +62,7 @@ namespace AZ
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
-            virtual RenderPipelinePtr CreateDistPipeline(int device, AZStd::string name) = 0;
+            virtual RenderPipelinePtr CreateDistPipeline(int device, const RenderPipelineDescriptor &desc) = 0;
 
             virtual RenderPipelinePtr GetDistPipeline(int device) = 0;
 

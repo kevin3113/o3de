@@ -89,7 +89,7 @@ namespace AZ
                 AZStd::string uuidString;
                 assetId.m_guid.ToString<AZStd::string>(uuidString, false, false);
 
-                print_stack();
+                //print_stack();
                 RHI::RHISystemInterface* rhiSystem = RHI::RHISystemInterface::Get();
                 RHI::PhysicalDeviceDescriptor physicalDeviceDesc = rhiSystem->GetDevice()->GetPhysicalDevice().GetDescriptor();
 
@@ -292,7 +292,7 @@ namespace AZ
         
         ConstPtr<RHI::PipelineLibraryData> Shader::LoadPipelineLibrary() const
         {
-            print_stack();
+            //print_stack();
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
             //Check if explicit file load/save operation is needed as the RHI backend api may not support it
             if (m_pipelineLibraryPath[0] != 0 && device->GetFeatures().m_isPsoCacheFileOperationsNeeded)
@@ -304,7 +304,7 @@ namespace AZ
 
         void Shader::SavePipelineLibrary() const
         {
-            print_stack();
+            //print_stack();
             RHI::Device* device = RHI::RHISystemInterface::Get()->GetDevice();
             if (m_pipelineLibraryPath[0] != 0)
             {

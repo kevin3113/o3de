@@ -806,8 +806,9 @@ namespace AZ
                     // Override it
                     auto attachment = CreateAttachmentFromDesc(desc);
                     m_ownedAttachments[i] = attachment;
-                    printf("Pass [%s] OverrideOrAddAttachment update atta [%s]\n", GetName().GetCStr(),
-                        attachment->GetAttachmentId().GetCStr());
+                    printf("Pass [%s] OverrideOrAddAttachment update atta [%s] source from pipeline %d\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr(),
+                        (int)attachment->m_getSizeFromPipeline);
                     overrideAttachment = true;
                     break;
                 }
@@ -951,16 +952,20 @@ namespace AZ
                 {
                     auto attachment = CreateAttachmentFromDesc(desc);
                     m_ownedAttachments.emplace_back(attachment);
-                    printf("Pass [%s] CreateAttachmentsFromTemplate image create atta [%s]\n", GetName().GetCStr(),
-                        attachment->GetAttachmentId().GetCStr());
+                    printf("Pass [%s] CreateAttachmentsFromTemplate image create atta [%s] size 0x %x_%x_%x\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr(),
+                        attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_width,
+                        attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_height,
+                        attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_depth);
                 }
                 // Create buffer attachments
                 for (const PassBufferAttachmentDesc& desc : m_template->m_bufferAttachments)
                 {
                     auto attachment = CreateAttachmentFromDesc(desc);
                     m_ownedAttachments.emplace_back(attachment);
-                    printf("Pass [%s] CreateAttachmentsFromTemplate buffer create atta [%s]\n", GetName().GetCStr(),
-                        attachment->GetAttachmentId().GetCStr());
+                    printf("Pass [%s] CreateAttachmentsFromTemplate buffer create atta [%s] size %llx\n", GetName().GetCStr(),
+                        attachment->GetAttachmentId().GetCStr(),
+                        attachment->GetTransientBufferDescriptor().m_bufferDescriptor.m_byteCount);
                 }
             }
         }
@@ -1006,13 +1011,17 @@ namespace AZ
                     switch (attachment->m_descriptor.m_type)
                     {
                     case RHI::AttachmentType::Image:
-                        printf("CreateTransientAttachments pass [%s] create image id %s\n",
-                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr());
+                        printf("CreateTransientAttachments pass [%s] create image id %s size 0x %x_%x_%x\n",
+                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr(),
+                                attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_width,
+                                attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_height,
+                                attachment->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_depth);
                         attachmentDatabase.CreateTransientImage(attachment->GetTransientImageDescriptor());
                         break;
                     case RHI::AttachmentType::Buffer:
-                        printf("CreateTransientAttachments pass [%s] create buffer id %s\n",
-                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr());
+                        printf("CreateTransientAttachments pass [%s] create buffer id %s size 0x%llx\n",
+                                GetName().GetCStr(), attachment->GetAttachmentId().GetCStr(),
+                                attachment->GetTransientBufferDescriptor().m_bufferDescriptor.m_byteCount);
                         attachmentDatabase.CreateTransientBuffer(attachment->GetTransientBufferDescriptor());
                         break;
                     default:
@@ -1120,6 +1129,9 @@ namespace AZ
             // This involves getting the format and calculating the size from the source attachment
             for (Ptr<PassAttachment>& attachment: m_ownedAttachments)
             {
+                printf("Update m_ownedAttachments pass [%s] atta id [%s] type %d\n",
+                    GetName().GetCStr(), attachment->GetAttachmentId().GetCStr(),
+                    (int)attachment->GetAttachmentType());
                 attachment->Update();
             }
         }

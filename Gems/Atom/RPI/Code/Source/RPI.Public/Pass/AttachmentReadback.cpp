@@ -120,7 +120,7 @@ namespace AZ
                 m_isReadbackComplete.push_back(false);
             }
             
-            print_stack();
+            //print_stack();
             // Create fence
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
             m_fence = RHI::Factory::Get().CreateFence();

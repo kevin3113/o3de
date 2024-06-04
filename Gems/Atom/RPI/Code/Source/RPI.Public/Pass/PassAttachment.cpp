@@ -123,6 +123,7 @@ namespace AZ
             if (m_descriptor.m_type == RHI::AttachmentType::Image &&
                 (m_lifetime == RHI::AttachmentLifetimeType::Transient || updateImportedAttachments == true))
             {
+                printf("goto update atta id [%s]\n", GetAttachmentId().GetCStr());
                 UpdateImageFormat();
                 UpdateImageMultisampleState();
                 UpdateImageSize();
@@ -138,6 +139,7 @@ namespace AZ
                     m_descriptor.m_image.m_mipLevels = static_cast<uint16_t>(mipMapLevels);
                 }
             }
+            printf("end update atta id [%s]\n", GetAttachmentId().GetCStr());
         }
 
         void PassAttachment::OnAttached(const PassAttachmentBinding& binding)
@@ -216,21 +218,28 @@ namespace AZ
             if (m_updatingSize)
             {
                 AZ_Assert(false, "PassAttachment::UpdateImageSize: Error: Circular reference detected");
+                printf("atta id [%s] size is updating in recurse\n", GetAttachmentId().GetCStr());
                 return;
             }
             m_updatingSize = true;
             if (m_getSizeFromPipeline && m_renderPipelineSource)
             {
+                printf("atta id [%s] size from pipeline seting\n", GetAttachmentId().GetCStr());
                 m_descriptor.m_image.m_size = m_renderPipelineSource->GetRenderSettings().m_size;
             }
             else if (m_sizeSource)
             {
                 auto& refAttachment = m_sizeSource->GetAttachment();
+                printf("atta id [%s] size from ref %p\n", GetAttachmentId().GetCStr(), refAttachment.get());
                 if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
                 {
                     refAttachment->UpdateImageSize();
                     RHI::Size sourceSize = refAttachment->m_descriptor.m_image.m_size;
                     m_descriptor.m_image.m_size = m_sizeMultipliers.ApplyModifiers(sourceSize);
+                    printf("ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
+                        refAttachment->m_descriptor.m_image.m_size.m_width,
+                        refAttachment->m_descriptor.m_image.m_size.m_height,
+                        refAttachment->m_descriptor.m_image.m_size.m_depth);
                 }
             }
             m_updatingSize = false;

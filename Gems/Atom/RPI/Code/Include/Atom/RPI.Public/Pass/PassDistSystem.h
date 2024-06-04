@@ -63,7 +63,7 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node);
 
-            Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass> node);
+            Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
@@ -79,7 +79,7 @@ namespace AZ
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
-            RenderPipelinePtr CreateDistPipeline(int device, AZStd::string name) override;
+            RenderPipelinePtr CreateDistPipeline(int device, const RenderPipelineDescriptor &desc) override;
 
             RenderPipelinePtr GetDistPipeline(int device) override;
 

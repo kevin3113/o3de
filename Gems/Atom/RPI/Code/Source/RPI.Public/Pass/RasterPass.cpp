@@ -103,7 +103,7 @@ namespace AZ
 
         void RasterPass::SetDrawListTag(Name drawListName)
         {
-            print_stack();
+            //print_stack();
             // Use AcquireTag to register a draw list tag if it doesn't exist. 
             RHI::RHISystemInterface* rhiSystem = RHI::RHISystemInterface::Get();
             m_drawListTag = rhiSystem->GetDrawListTagRegistry()->AcquireTag(drawListName);

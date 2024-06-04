@@ -322,28 +322,52 @@ namespace AZ
             return add;
         }
 
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPass(Name name, Ptr<Pass> node)
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node)
         {
-            Name prePass = node->GetName();
+            Name prePassName = prePass->GetName();
             PassConnection conn;
             PassRequest req;
             req.m_passName = name;
             req.m_templateName = "FullscreenShadowTemplate";
 
             conn.m_localSlot = "DirectionalShadowmaps";
-            conn.m_attachmentRef.m_pass = prePass;
+            conn.m_attachmentRef.m_pass = prePassName;
             conn.m_attachmentRef.m_attachment = "DirectionalShadowmaps";
             req.m_connections.emplace_back(conn);
 
             conn.m_localSlot = "Depth";
-            conn.m_attachmentRef.m_pass = prePass;
+            conn.m_attachmentRef.m_pass = prePassName;
             conn.m_attachmentRef.m_attachment = "Depth";
             req.m_connections.emplace_back(conn);
 
             conn.m_localSlot = "DepthLinear";
-            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_pass = prePassName;
             conn.m_attachmentRef.m_attachment = "DepthLinear";
             req.m_connections.emplace_back(conn);
+
+            PassImageAttachmentDesc outDesc;
+            outDesc.m_name = node->GetOutputBinding(0).GetAttachment()->m_name;
+            outDesc.m_imageDescriptor = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
+
+            if (node->GetOutputBinding(0).GetAttachment()->m_sizeSource)
+            {
+                auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
+                printf("m_sizeSource atta id [%s] size from ref %p\n", node->GetOutputBinding(0).GetAttachment()->GetAttachmentId().GetCStr(),
+                    refAttachment.get());
+                if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
+                {
+                    printf("m_sizeSource ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
+                        refAttachment->m_descriptor.m_image.m_size.m_width,
+                        refAttachment->m_descriptor.m_image.m_size.m_height,
+                        refAttachment->m_descriptor.m_image.m_size.m_depth);
+                    outDesc.m_imageDescriptor = refAttachment->m_descriptor.m_image;
+                }
+            }
+
+            req.m_imageAttachmentOverrides.emplace_back(outDesc);
+
+            printf("create pass [%s] m_imageAttachmentOverrides m_name [%s]\n",
+                name.GetCStr(), node->GetOutputBinding(0).GetAttachment()->m_name.GetCStr());
             
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
             return add;
@@ -540,7 +564,7 @@ namespace AZ
             std::string  afterName = orig + "_DistAfter";
             Name newName = Name(preName.c_str());
             Ptr<Pass> prePass = CreateFullscreenShadowDistPrePass(Name(preName.c_str()), pass);
-            Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass);
+            Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass, pass);
             Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass);
             root->AddChild(prePass);
             root->AddChild(distPass);
@@ -655,13 +679,12 @@ namespace AZ
             }
         }
 
-        RenderPipelinePtr PassDistSystem::CreateDistPipeline(int device, AZStd::string name)
+        RenderPipelinePtr PassDistSystem::CreateDistPipeline(int device, const RenderPipelineDescriptor &desc)
         {
-            const RenderPipelineDescriptor desc { .m_name = name };
             RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
             m_devPipelines.emplace(device, pipeline);
             printf("PassDistSystem add pipeline [%s] on device %d\n",
-                name.c_str(), device);
+                desc.m_name.c_str(), device);
             return pipeline;
         }
 

@@ -33,6 +33,7 @@
 #include <RHI/WindowSurfaceBus.h>
 #include <Vulkan_Traits_Platform.h>
 #include <Atom/RHI.Reflect/VkAllocator.h>
+#include <AzCore/Debug/CStackTrace.h>
 
 namespace AZ
 {
@@ -424,6 +425,8 @@ namespace AZ
             m_stagingBufferPool->SetName(AZ::Name("Device_StagingBufferPool"));
             result = m_stagingBufferPool->Init(*this, poolDesc);
             RETURN_RESULT_IF_UNSUCCESSFUL(result);
+            printf("Init Device_StagingBufferPool m_stagingBufferPool\n");
+            //print_stack();
 
             {
                 m_constantBufferPool = BufferPool::Create();
@@ -435,6 +438,7 @@ namespace AZ
                 bufferPoolDescriptor.m_heapMemoryLevel = RHI::HeapMemoryLevel::Host;
                 result = m_constantBufferPool->Init(*this, bufferPoolDescriptor);
                 RETURN_RESULT_IF_UNSUCCESSFUL(result);
+                printf("Init ConstantPool m_constantBufferPool\n");
             }           
 
             SetName(GetName());
@@ -597,6 +601,9 @@ namespace AZ
                 AZ_Assert(false, "Initialization of staging Buffer fails.");
                 return nullptr;
             }
+
+            printf("AcquireStagingBuffer size %lu\n", (unsigned long)byteCount);
+            //print_stack();
 
             return stagingBuffer;
         }

@@ -38,7 +38,7 @@ namespace AZ
 
         void BufferSystem::Init()
         {
-            print_stack();
+            //print_stack();
             RHI::Ptr<RHI::Device> device = RHI::RHISystemInterface::Get()->GetDevice();
 
             {
@@ -96,7 +96,7 @@ namespace AZ
             {
                 return false;
             }
-            print_stack();
+            //print_stack();
             auto* device = RHI::RHISystemInterface::Get()->GetDevice();
             
             RHI::Ptr<RHI::BufferPool> bufferPool = RHI::Factory::Get().CreateBufferPool();

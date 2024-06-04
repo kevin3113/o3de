@@ -358,7 +358,15 @@ const PhysicalDeviceDescriptor& GetDescriptor()
         VendorId m_vendorId = VendorId::Unknown;
         uint32_t m_deviceId = 0;
         uint32_t m_driverVersion = 0;
-        
+
+struct PassAttachmentDesc
+  PassAttachmentSizeSource m_sizeSource;
+    PassAttachmentRef m_source;
+      Name m_pass;
+      Name m_attachment;
+    PassAttachmentSizeMultipliers m_multipliers;
+
+
 #include <AzCore/Debug/CStackTrace.h>
 
 
@@ -426,3 +434,20 @@ CLayoutWnd::LoadConfig()
 
 4、draw packet:
 SetDrawListTag:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RasterPass.cpp:106
+operator():/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/MeshDrawPacket.cpp:262
+
+
+all:
+CacheFeatureSupport:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/GpuQuery/GpuQuerySystem.cpp:102
+CreateCommonBufferPool:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Buffer/BufferSystem.cpp:99
+CreateDefaultResources:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Image/ImageSystem.cpp:438
+GetPipelineLibraryPath:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:92
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Buffer/BufferSystem.cpp:41
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Image/ImageSystem.cpp:138
+Init:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/ShaderResourceGroupPool.cpp:52
+LoadPipelineLibrary:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:295
+operator():/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/MeshDrawPacket.cpp:262
+QueryPool:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/GpuQuery/QueryPool.cpp:54
+SavePipelineLibrary:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:307
+SetDrawListTag:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RasterPass.cpp:106
+

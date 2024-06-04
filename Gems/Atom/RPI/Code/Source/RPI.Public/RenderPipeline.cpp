@@ -795,8 +795,21 @@ namespace AZ
 
         void RenderPipeline::AddPipelineGlobalConnection(const Name& globalName, PassAttachmentBinding* binding, Pass* pass)
         {
-            printf("AddPipelineGlobalConnection: pipeline [%s] globalName [%s] bind [%s] pass [%s]\n",
-                GetId().GetCStr(), globalName.GetCStr(), binding->m_name.GetCStr(), pass->GetName().GetCStr());
+            Ptr<PassAttachment> att = binding->GetAttachment();
+            printf("AddPipelineGlobalConnection: pipeline [%s] globalName [%s] bind [%s] pass [%s] att %p\n",
+                GetId().GetCStr(), globalName.GetCStr(), binding->m_name.GetCStr(), pass->GetName().GetCStr(), att.get());
+            if (att) {
+                if (att->GetAttachmentType() == RHI::AttachmentType::Image)
+                    printf("Attachment Id %s path %s type Image size 0x %x_%x_%x\n", att->m_name.GetCStr(),
+                        att->m_path.GetCStr(), 
+                        att->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_width,
+                        att->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_height,
+                        att->GetTransientImageDescriptor().m_imageDescriptor.m_size.m_depth);
+                else
+                    printf("Attachment Id %s path %s type Buffer size 0x%llx\n", att->m_name.GetCStr(),
+                        att->m_path.GetCStr(), 
+                        att->GetTransientBufferDescriptor().m_bufferDescriptor.m_byteCount);
+            }
             m_pipelineGlobalConnections.push_back(PipelineGlobalBinding{ globalName, binding, pass });
         }
 
