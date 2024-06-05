@@ -527,7 +527,7 @@ namespace AZ
             {
                 PassConnection mconn;
                 mconn.m_localSlot = conn.m_localSlot;
-                mconn.m_attachmentRef.m_pass = newName;
+                mconn.m_attachmentRef.m_pass = prePass->GetName();
                 mconn.m_attachmentRef.m_attachment = conn.m_localSlot;
                 pass->m_request.m_connections.emplace_back(mconn);
             }

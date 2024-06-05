@@ -6,16 +6,17 @@ def process_edge(line, graph):
     if line.find('Root ->') > 0:
         return
     if line.find('+++') == 0:
-        edge = line[len('+++ insert edge'):]
+        edge = line[len('+++ insert edge'):].strip()
         graph.append(edge)
         return
     if line.find('>>>') == 0:
-        edge = line[len('>>> update edge'):]
-        for old in graph:
-            if edge[:-len('[color=blue]')] == old[:-len('[color=blue]')]:
-                if edge != old:
-                    graph.remove(old)
-                    graph.append(edge)
+        edge = line[len('>>> update edge'):].strip()
+        ekey = edge.split('[')[0]
+        for i in range(0, len(graph)):
+            old = graph[i]
+            old_ekey = old.split('[')[0]
+            if old_ekey == ekey:
+                graph[i] = old[:-1] + '\\n' + edge.split('label=')[1].strip()
                 break
         return
 
@@ -39,6 +40,8 @@ def validate_edge(graph):
                 eds.append(ne)
             else:
                 eds.append(e)
+        lab = lab.replace('=', '="')
+        lab = lab.replace(']', '"]')
         ne = ' -> '.join(eds) + ' ' + lab
         if m % 2 == 0:
             ne = ne + ' [color=blue] [fontcolor=blue]'
@@ -47,7 +50,7 @@ def validate_edge(graph):
         ne = ne.replace('2DPass', '_2DPass')
         ne = ne.replace('.', '_')
         ne = ne.replace('$', '_')
-        ng.append(ne)
+        ng.append(ne + '\n')
         for n in ne[:ne.find('[')].strip().split(' -> '):
             if n.find('Preview_') == 0:
                 cl[n] = '[fontcolor=green]'
@@ -95,9 +98,9 @@ with open ('log.log', 'r') as fd:
             process_edge(line, two_pipe_graph)
 
     with open ('g_one_pipe_graph.log', 'w+') as ofd:
-        ofd.write(' '.join(one_pipe_graph))
+        ofd.write('\n'.join(one_pipe_graph))
     with open ('g_two_pipe_graph.log', 'w+') as tfd:
-        tfd.write(' '.join(two_pipe_graph))
+        tfd.write('\n'.join(two_pipe_graph))
 
     one_pipe_graph = validate_edge(one_pipe_graph)
     two_pipe_graph = validate_edge(two_pipe_graph)
