@@ -52,13 +52,29 @@ namespace AZ
         public:
             AZ_RTTI(PassDistSystemInterface, "{18067FB6-1B1D-11EF-9B62-194A7A597F6C}");
 
-            PassDistSystemInterface() = default;
-            virtual ~PassDistSystemInterface() = default;
+            PassDistSystemInterface(void) = default;
+            virtual ~PassDistSystemInterface(void) = default;
 
             // Note that you have to delete these for safety reasons, you will trip a static_assert if you do not
             AZ_DISABLE_COPY_MOVE(PassDistSystemInterface);
 
-            static PassDistSystemInterface* Get();
+            static PassDistSystemInterface* Get(void);
+
+            virtual bool IsActive(void) = 0;
+
+            virtual void Active(void) = 0;
+
+            virtual void Inactive(void) = 0;
+
+            virtual int Connect(void) = 0;
+
+            virtual int Send(void) = 0;
+
+            virtual int Recv(void) = 0;
+
+            virtual void *DequePassMsg(void) = 0;
+
+            virtual void EnquePassMsg(void *data) = 0;
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
@@ -66,9 +82,9 @@ namespace AZ
 
             virtual RenderPipelinePtr GetDistPipeline(int device) = 0;
 
-            virtual void SetCurDevice(int deviceId) = 0;
+            virtual void SetActivePipeline(Name name) = 0;
 
-            virtual int GetCurDevice(void) = 0;
+            virtual Name GetActivePipeline(void) = 0;
 
             virtual void FrameEnd(void) = 0;
 

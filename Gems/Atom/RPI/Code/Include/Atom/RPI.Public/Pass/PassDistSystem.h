@@ -22,6 +22,8 @@
 
 #include <AzFramework/Windowing/WindowBus.h>
 
+#include <pthread.h>
+
 namespace AZ
 {
     namespace RHI
@@ -31,6 +33,43 @@ namespace AZ
 
     namespace RPI
     {
+        #define MAX_QUE_LEN 1024
+        class WaitQueue {
+        public:
+            WaitQueue()
+            {
+                pthread_mutex_init(&m_mutex, NULL);
+                pthread_cond_init(&m_cond, NULL);
+            }
+            void *P(void)
+            {
+                void *data;
+                pthread_mutex_lock(&m_mutex);
+                while (m_readItr >= m_writeItr) {
+                    (void)pthread_cond_wait(&m_cond, &m_mutex);
+                }   
+                data = m_dataQue[m_readItr % MAX_QUE_LEN];
+                m_readItr++;
+                pthread_mutex_unlock(&m_mutex);
+                return data;
+            }
+            void V(void *data)
+            {
+                pthread_mutex_lock(&m_mutex);
+                m_dataQue[m_writeItr % MAX_QUE_LEN] = data;
+                m_writeItr++;
+                pthread_cond_signal(&m_cond);
+                pthread_mutex_unlock(&m_mutex);
+            }
+
+        private:
+            pthread_cond_t m_cond;
+            pthread_mutex_t m_mutex;
+            void *m_dataQue[MAX_QUE_LEN];
+            unsigned long m_writeItr = 0;
+            unsigned long m_readItr = 0;
+        };
+
         class PassDistSystem final
             : public PassDistSystemInterface
         {
@@ -51,6 +90,8 @@ namespace AZ
             //! Deletes the Root Pass and shuts down the PassSystem
             void Shutdown();
 
+            void CommInit(bool isServer, const char *path);
+
             void ShowConnections(Ptr<Pass> &pass);
 
             Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> &modify);
@@ -65,6 +106,21 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
+            uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
+
+            uint32_t CreateFullscreenShadowDistPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass>prePass, Ptr<Pass> node);
+
+            uint32_t CreateFullscreenShadowDistAfterPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
+
+            uint32_t ParsePassAttrsMsg(void *passMsgStart, PassSlotList &slots, PassConnectionList &conns,
+                PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs);
+
+            Ptr<Pass> PassCreateFromTemplateMsg(char *buf, uint32_t len);
+
+            Ptr<Pass> PassCreateFromRequestMsg(char *buf, uint32_t len);
+
+            uint32_t ParsePassCreateMsg(char *buf, uint32_t len);
+
             void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
             void ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
@@ -77,15 +133,31 @@ namespace AZ
 
             void UpdateDistPasses(void);
 
+            bool IsActive(void);
+
+            void Active(void);
+
+            void Inactive(void);
+
+            int Connect(void) override;
+
+            int Send(void) override;
+
+            int Recv(void) override;
+
+            void *DequePassMsg(void) override;
+
+            void EnquePassMsg(void *data) override;
+
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
             RenderPipelinePtr CreateDistPipeline(int device, const RenderPipelineDescriptor &desc) override;
 
             RenderPipelinePtr GetDistPipeline(int device) override;
 
-            void SetCurDevice(int deviceId) override;
+            void SetActivePipeline(Name name) override;
 
-            int GetCurDevice(void) override;
+            Name GetActivePipeline(void) override;
 
             void FrameEnd(void) override;
 
@@ -103,11 +175,19 @@ namespace AZ
 
             AZStd::unordered_map<int, RenderPipelinePtr> m_devPipelines;
 
-            int m_curDevice = 0;
+            Name m_activePipeline;
 
             bool m_state = false;
 
             Name m_modify;
+
+            int m_sfd = -1;
+
+            bool m_isServer = false;
+
+            Name m_commPath;
+
+            WaitQueue m_msgQue;
 
         };
     }   // namespace RPI

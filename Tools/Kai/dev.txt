@@ -24,7 +24,7 @@ https://github.com/glfw/glfw/releases/tag/3.4
 https://github.com/KhronosGroup/OpenGL-Registry
 
 
-
+o3de build:
 cmake -B build/linux -S . -G "Ninja" -DLY_3RDPARTY_PATH=./o3de-packages
 cmake --build build/linux --target Editor --config release -j8
 
@@ -42,10 +42,13 @@ compilation terminated.
 sudo apt install libxcb-xinput-dev
 
 
-project build:
+MyProject build:
 cmake -B build/linux -S . -GNinja Multi-Config -DLY_3RDPARTY_PATH=/home/kai/o3deprj/.o3de/3rdParty
 cmake --build build/linux --target MyProject.GameLauncher MyProject.HeadlessServerLauncher MyProject.ServerLauncher MyProject.UnifiedLauncher Editor --config release -j8
 
+RenderDaemon build:
+cmake -B build/linux -S . -GNinja Multi-Config -DLY_3RDPARTY_PATH=/home/kai/o3deprj/.o3de/3rdParty
+cmake --build build/linux --target RenderDaemon.GameLauncher RenderDaemon.HeadlessServerLauncher RenderDaemon.ServerLauncher RenderDaemon.UnifiedLauncher Editor --config release -j8
 
 
 

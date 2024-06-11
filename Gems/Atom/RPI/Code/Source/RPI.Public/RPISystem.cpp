@@ -58,10 +58,6 @@ AZ_DEFINE_BUDGET(RPI);
 #define NVIDIA 1
 #define INTEL 0
 uint64_t g_main_pipeline_start = 1000000;
-int g_dev0_disable = 0;
-int g_dev1_disable = 1;
-int g_dev0_id = NVIDIA;
-int g_dev1_id = INTEL;
 
 namespace AZ
 {
@@ -102,40 +98,12 @@ namespace AZ
             //auto commandLineMultipleDevicesValue{ RHI::GetCommandLineValue("device-count") };
             //m_rhiSystem.InitDevices((commandLineMultipleDevicesValue != "") ? AZStd::stoi(commandLineMultipleDevicesValue) : 1);
             int initDevId = NVIDIA;
-            char *vendor = getenv("DEV0_VENDOR");
+            char *vendor = getenv("DEV_VENDOR");
             if (vendor && 0 == strcmp((const char *)vendor, "Intel"))
             {
                 initDevId = INTEL;
             }
             m_rhiSystem.InitDevices(initDevId);
-            initDevId = INTEL;
-            vendor = getenv("DEV1_VENDOR");
-            if (vendor && 0 == strcmp((const char *)vendor, "Nvidia"))
-            {
-                initDevId = NVIDIA;
-            }
-            auto ret = g_rhiSystem.InitDevices(initDevId);
-            printf("g_rhiSystem.InitDevices ret %d\n", (int)ret);
-
-            if (getenv("DISABLE_DEV0"))
-            {
-                g_dev0_disable = 1;
-            }
-            if (getenv("DISABLE_DEV1"))
-            {
-                g_dev1_disable = 1;
-            }
-            char *val = getenv("DEV0_ID");
-            if (val)
-            {
-                g_dev0_id = atoi((const char *)val);
-            }
-            val = getenv("DEV1_ID");
-            if (val)
-            {
-                g_dev1_id = atoi((const char *)val);
-            }
-
 
             // Gather asset handlers from sub-systems.
             ImageSystem::GetAssetHandlers(m_assetHandlers);
@@ -152,6 +120,15 @@ namespace AZ
             m_shaderSystem.Init();
             m_passSystem.Init();
             m_passDistSystem.Init();
+            char *pipeline = getenv("DIST_PIPE");
+            if (pipeline)
+            {
+                PassDistSystemInterface::Get()->SetActivePipeline(Name(pipeline));
+            }
+            else
+            {
+                PassDistSystemInterface::Get()->SetActivePipeline(Name());
+            }
             m_featureProcessorFactory.Init();
             m_querySystem.Init(m_descriptor.m_gpuQuerySystemDescriptor);
 
@@ -190,8 +167,6 @@ namespace AZ
             m_imageSystem.Shutdown();
             m_querySystem.Shutdown();
             m_rhiSystem.Shutdown();
-            g_rhiSystem.Shutdown();
-            printf("g_rhiSystem.Shutdown\n");
 
             /**
              * [LY-86745] We need to pump the asset manager queue here, because
@@ -322,6 +297,12 @@ namespace AZ
             {
                 return;
             }
+
+            if (!PassDistSystemInterface::Get()->IsActive())
+            {
+                return;
+            }
+
             AZ_PROFILE_SCOPE(RPI, "RPISystem: SimulationTick");
 
             AssetInitBus::Broadcast(&AssetInitBus::Events::PostLoadInit);
@@ -376,6 +357,11 @@ namespace AZ
                 return;
             }
 
+            if (!PassDistSystemInterface::Get()->IsActive())
+            {
+                return;
+            }
+
             AZ_PROFILE_SCOPE(RPI, "RPISystem: RenderTick");
 
             // Query system update is to increment the frame count
@@ -385,14 +371,8 @@ namespace AZ
             // [GFX TODO] We may parallel scenes' prepare render.
             for (auto& scenePtr : m_scenes)
             {
-                //if (strcmp(scenePtr->GetName().GetCStr(), "PreviewRenderer") == 0) {
-                //    scenePtr->Deactivate();
-                //    printf("---------- Deactivate PreviewRenderer Scene ----------\n");
-                //}
                 printf("---------- Prepare Render Scene [%s] ----------\n", scenePtr->GetName().GetCStr());
                 if (strcmp(scenePtr->GetName().GetCStr(), "Main") == 0) {
-                    //printf("---------- Deactivate Main Scene ----------\n");
-                    // Distribute System
                     if (m_renderTick > (g_main_pipeline_start + 10))
                     {
                         if (!getenv("PASS_DISABLE"))
@@ -414,6 +394,11 @@ namespace AZ
                     }
                     else
                     {
+                        if (pipeline->GetScene() == nullptr)
+                        {
+                            printf("add pipeline to scene!\n");
+                            scenePtr->AddRenderPipeline(pipeline);
+                        }
                         PipelineRenderSettings& setting = pipeline->GetRenderSettings();
                         setting = def->GetRenderSettings();
                         printf("update pipeline [%s] setting from [%s] size 0x %x_%x_%x\n",
@@ -466,42 +451,20 @@ namespace AZ
                 }
             }
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
-            g_rhiSystem.SetNumActiveRenderPipelines(1);
 
-            if (!g_dev0_disable)
-            {
-                PassDistSystemInterface::Get()->SetCurDevice(g_dev0_id);
-                m_rhiSystem.FrameUpdate(
-                    [this](RHI::FrameGraphBuilder& frameGraphBuilder)
+            m_rhiSystem.FrameUpdate(
+                [this](RHI::FrameGraphBuilder& frameGraphBuilder)
+                {
+                    // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
+                    // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
+                    m_passSystem.FrameUpdate(frameGraphBuilder);
+
+                    // Update Scene and View Srgs
+                    for (auto& scenePtr : m_scenes)
                     {
-                        // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
-                        // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
-                        m_passSystem.FrameUpdate(frameGraphBuilder);
-
-                        // Update Scene and View Srgs
-                        for (auto& scenePtr : m_scenes)
-                        {
-                            scenePtr->UpdateSrgs();
-                        }
-                    });
-            }
-            if (!g_dev1_disable)
-            {
-                PassDistSystemInterface::Get()->SetCurDevice(g_dev1_id);
-                g_rhiSystem.FrameUpdate(
-                    [this](RHI::FrameGraphBuilder& frameGraphBuilder)
-                    {
-                        // Pass system's frame update, which includes the logic of adding scope producers, has to be added here since the
-                        // scope producers only can be added to the frame when frame started which cleans up previous scope producers.
-                        m_passSystem.FrameUpdate(frameGraphBuilder);
-
-                        // Update Scene and View Srgs
-                        for (auto& scenePtr : m_scenes)
-                        {
-                            scenePtr->UpdateSrgs();
-                        }
-                    });
-            }
+                        scenePtr->UpdateSrgs();
+                    }
+                });
 
             {
                 AZ_PROFILE_SCOPE(RPI, "RPISystem: FrameEnd");
@@ -588,8 +551,6 @@ namespace AZ
             }
 
             m_rhiSystem.Init(bindlessSrgLayout);
-            g_rhiSystem.Init(bindlessSrgLayout);
-            printf("g_rhiSystem.Init\n");
             m_imageSystem.Init(m_descriptor.m_imageSystemDescriptor);
             m_bufferSystem.Init();
             m_dynamicDraw.Init(m_descriptor.m_dynamicDrawSystemDescriptor);

@@ -24,6 +24,7 @@
 #include <Atom/RPI.Public/Pass/PassFactory.h>
 #include <Atom/RPI.Public/Pass/PassLibrary.h>
 #include <Atom/RPI.Public/Pass/PassDistSystem.h>
+#include <Atom/RPI.Public/Pass/PassDistUtil.h>
 #include <Atom/RPI.Public/Pass/PassUtils.h>
 #include <Atom/RPI.Public/Pass/Specific/SwapChainPass.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
@@ -40,16 +41,47 @@
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
 #include <Atom/RPI.Reflect/Pass/RenderPassData.h>
 #include <Atom/RPI.Reflect/Pass/SlowClearPassData.h>
+#include <Atom/RPI.Public/RPISystem.h>
 #include <AzCore/Debug/CStackTrace.h>
+
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 namespace AZ
 {
     namespace RPI
     {
+        static thread_local bool isActive = false;
 
         PassDistSystemInterface* PassDistSystemInterface::Get()
         {
             return Interface<PassDistSystemInterface>::Get();
+        }
+
+        bool PassDistSystem::IsActive()
+        {
+            if (m_isServer)
+            {
+                return true;
+            }
+            return isActive;
+        }
+
+        void PassDistSystem::Active()
+        {
+            isActive = true;
+        }
+
+        void PassDistSystem::Inactive()
+        {
+            isActive = false;
         }
 
         void PassDistSystem::Reflect(AZ::ReflectContext* context)
@@ -59,6 +91,7 @@ namespace AZ
         void PassDistSystem::Init()
         {
             Interface<PassDistSystemInterface>::Register(this);
+            
         }
 
         void PassDistSystem::Shutdown()
@@ -68,6 +101,228 @@ namespace AZ
 
         void PassDistSystem::FrameEnd(void)
         {
+        }
+
+        void DumpMsg(const char *name, char *buf, uint32_t len)
+        {
+            uint32_t cur;
+            FILE *fp = nullptr;
+            if (name)
+            {
+                fp = fopen(name, "w+"); 
+            }
+            printf("Dump message length %u:\n", len);
+            for (cur = 0; cur < len; cur += 4)
+            {
+                if ((cur % 32) == 0)
+                {
+                    printf("%p:", (void *)(buf + cur));
+                    if (fp)
+                        fprintf(fp, "%p:", (void *)(buf + cur));
+                }
+                printf(" %08x", *(unsigned int *)(&buf[cur]));
+                if (fp)
+                    fprintf(fp, " %08x", *(unsigned int *)(&buf[cur]));
+                if ((cur % 32) == 28)
+                {
+                    printf("\n");
+                    if (fp)
+                        fprintf(fp, "\n");
+                }
+            }
+            printf("\n");
+            if (fp)
+            {
+                fprintf(fp, "\n");
+                fclose(fp);
+            }
+        }
+
+        void CreateThread(void *(*func)(void *), void *arg)
+        {
+            pthread_attr_t attr;
+            int ret;
+            ret = pthread_attr_init(&attr);
+            if (ret != 0)
+            {
+                printf("pthread attr init ret %d\n", ret);
+                return;
+            }
+            pthread_t daemonThr;
+            ret = pthread_create(&daemonThr, &attr, func, arg);
+            if (ret != 0)
+            {
+                printf("pthread create ret %d\n", ret);
+            }
+            (void)pthread_attr_destroy(&attr);
+            printf("thread 0x%lx create ok!\n", daemonThr);
+        }
+        
+        void *SeverThread(void *arg)
+        {
+            #define BUF_SIZE 256
+            int cfd = *(int *)arg;
+            ssize_t numRead;
+            char buf[BUF_SIZE];
+
+            for (;;)
+            {
+                void *msg = PassDistSystemInterface::Get()->DequePassMsg();
+                MsgHead *msgHead = (MsgHead *)msg;
+                printf("Deque pass message len %u\n", msgHead->msgLen);
+                DumpMsg("send.txt", (char *)msg, msgHead->msgLen);
+                //const char *msg = "Send pass to clients!\n";
+                if (write(cfd, msg, msgHead->msgLen) <= 0)
+                {
+                    printf("send to client error!\n");
+                    break;
+                } 
+                if (read(cfd, buf, BUF_SIZE) <= 0)
+                {
+                    printf("recv from client error!\n");
+                    break;
+                }
+                printf("server recv: %s\n", buf);
+            }
+            close(cfd);
+            printf("socket client disconnected!\n");
+            *(int *)arg = 0;
+            return nullptr;
+        }
+
+        void *ServerDaemon(void *arg)
+        {
+            int sfd = *(int *)arg;
+            int fdPool[16] = {0};
+            for (;;)
+            {
+                printf("Waiting to accept a connection...\n");
+                int cfd = accept(sfd, NULL, NULL);
+                printf("Accepted socket fd = %d\n", cfd);
+                if (cfd >= 0)
+                {
+                    uint32_t i = 0;
+                    for (;;)
+                    {
+                        if (fdPool[i%16] == 0)
+                            break;
+                        i++;
+                    }
+                    fdPool[i%16] = cfd;
+                    CreateThread(&SeverThread, &fdPool[i%16]);
+                }
+            }
+            return nullptr;
+        }
+
+        void *ClientDaemon(void *arg)
+        {
+            for (;;)
+            {
+                if (!PassDistSystemInterface::Get()->Recv())
+                {
+                    PassDistSystemInterface::Get()->Active();
+                    //RPISystemInterface::Get()->RenderTick();
+                    PassDistSystemInterface::Get()->Send();
+                    PassDistSystemInterface::Get()->Inactive();
+                    continue;
+                }
+                sleep(1);
+                PassDistSystemInterface::Get()->Connect();
+            }
+            return nullptr;
+        }
+
+        void PassDistSystem::CommInit(bool isServer, const char *path)
+        {
+            struct sockaddr_un addr;
+
+            m_sfd = socket(AF_UNIX, SOCK_STREAM, 0); 
+            printf("Server socket fd = %d\n", m_sfd);
+
+            if (m_sfd == -1) {
+                printf("socket error!\n");
+                return;
+            }
+
+            if (isServer && remove(path) == -1 && errno != ENOENT) {
+                printf("remove-%s error!\n", path);
+                return;
+            }
+
+            m_commPath = Name(path);
+
+            if (isServer)
+            {
+                memset(&addr, 0, sizeof(struct sockaddr_un));
+                addr.sun_family = AF_UNIX;
+                strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+                if (bind(m_sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1) {
+                    printf("bind error\n");
+                    return;
+                }
+                if (listen(m_sfd, 16) == -1) {
+                    printf("listen error!\n");
+                    return;
+                }
+                CreateThread(&ServerDaemon, (void *)&m_sfd);
+                printf("Dist Daemon thread create ok!\n");
+            }
+            else
+            {
+                CreateThread(&ClientDaemon, (void *)&m_sfd);
+                printf("Dist Daemon thread create ok!\n");
+            }
+        }
+
+        int PassDistSystem::Connect(void)
+        {
+            struct sockaddr_un addr;
+
+            memset(&addr, 0, sizeof(struct sockaddr_un));
+            addr.sun_family = AF_UNIX;
+            strncpy(addr.sun_path, m_commPath.GetCStr(), sizeof(addr.sun_path) - 1);
+
+            if (connect(m_sfd, (struct sockaddr *) &addr,
+                        sizeof(struct sockaddr_un)) == -1) {
+                printf("connect error!\n");
+                return -1;
+            }
+            return 0;
+        }
+
+        int PassDistSystem::Send(void)
+        {
+            char buf[256] = {"client send msg ...............\n"};
+            if (write(m_sfd, buf, sizeof(buf)) != sizeof(buf)) {
+                printf("partial/failed write error!\n");
+                return -1;
+            }
+            printf("send: %s\n", buf);
+            return 0;
+        }
+
+        int PassDistSystem::Recv(void)
+        {
+            char buf[10240];
+
+            int len = read(m_sfd, buf, sizeof(MsgHead));
+            if (len != sizeof(MsgHead))
+            {
+                printf("recv error len %d\n", len);
+                return -1;
+            }
+            MsgHead *msgHead = (MsgHead *)buf;
+            printf("recv pass message task id %u len %u\n", msgHead->taskId, msgHead->msgLen);
+            do
+            {
+                len += read(m_sfd, buf + len, sizeof(buf) - len);
+            } while (len < msgHead->msgLen);
+
+            DumpMsg("recv.txt", buf, msgHead->msgLen);
+
+            ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead));
+            return 0;
         }
 
         void ProcessSubPasses(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>>& subPasses)
@@ -82,6 +337,16 @@ namespace AZ
                     ProcessSubPasses(subPass, subPasses);
                 }
             }
+        }
+
+        void *PassDistSystem::DequePassMsg(void)
+        {
+            return m_msgQue.P();
+        }
+
+        void PassDistSystem::EnquePassMsg(void *data)
+        {
+            m_msgQue.V(data);
         }
 
         Ptr<Pass> PassDistSystem::CreateDistPass(Name name, Ptr<Pass> &modify)
@@ -373,6 +638,348 @@ namespace AZ
             return add;
         }
 
+        uint32_t PassDistSystem::CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node)
+        {
+            char *pos = buf;
+            printf("CreateFullscreenShadowDistPrePassMsg tlv start %p\n", (void *)pos);
+            MsgTlvInfo *passTlv = (MsgTlvInfo *)pos;
+            passTlv->type = (uint32_t)DistTlvType::Pass;
+            pos += sizeof(MsgTlvInfo);
+            MsgPass *passHead = (MsgPass *)pos;
+            pos += sizeof(MsgPass);
+            printf("CreateFullscreenShadowDistPrePassMsg pass msg  start %p\n", (void *)passHead);
+            passHead->createType = (uint32_t)PassCreateType::Template;
+            strncpy(passHead->name, name.GetCStr(), sizeof(passHead->name));
+            strncpy(passHead->passTemp, "FullscreenShadowPassDistPreTemplate", sizeof(passHead->passTemp));
+            strncpy(passHead->passClass, "ComputePass", sizeof(passHead->passClass));
+
+            MsgPassSlot *slot = (MsgPassSlot *)pos;
+            passHead->slotCnt = 3;
+            pos += sizeof(MsgPassSlot) * passHead->slotCnt;
+
+            MsgPassConn *conn = (MsgPassConn *)pos;
+            passHead->connCnt = 3;
+            pos += sizeof(MsgPassConn) * passHead->connCnt;
+
+            MsgPassAttImg *img = (MsgPassAttImg *)pos;
+            passHead->imgCnt = 3;
+            pos += sizeof(MsgPassAttImg) * passHead->imgCnt;
+            passHead->bufCnt = 0;
+
+            for (uint32_t i = 0; i < node->GetInputCount(); i++)
+            {
+                PassAttachmentBinding binding = node->GetInputBinding(i);
+                if (binding.m_name == Name("DirectionalShadowmaps")
+                    || binding.m_name == Name("Depth")
+                    || binding.m_name == Name("DepthLinear"))
+                {
+                    printf("CreateFullscreenShadowDistPrePassMsg process binding [%s]\n", binding.m_name.GetCStr());
+                    slot->slotType = (uint32_t)PassSlotType::InputOutput;
+                    strncpy(slot->slotName, binding.m_name.GetCStr(), sizeof(slot->slotName));
+                    printf("slot %p name [%s]\n", (void *)slot, slot->slotName);
+                    slot++;
+
+                    strncpy(conn->localSlot, binding.m_name.GetCStr(), sizeof(conn->localSlot));
+                    strncpy(conn->refPassName, "This", sizeof(conn->refPassName));
+                    strncpy(conn->refAttName, binding.GetAttachment()->m_name.GetCStr(), sizeof(conn->refAttName));
+                    printf("conn %p local slot name [%s]\n", (void *)conn, conn->localSlot);
+                    conn++;
+
+                    strncpy(img->name, binding.GetAttachment()->m_name.GetCStr(), sizeof(img->name));
+                    RHI::ImageDescriptor imgDesc = binding.GetAttachment()->m_descriptor.m_image;
+                    img->bindFlags = (uint32_t)imgDesc.m_bindFlags;
+                    img->width = (uint32_t)imgDesc.m_size.m_width;
+                    img->height = (uint32_t)imgDesc.m_size.m_height;
+                    img->depth = (uint32_t)imgDesc.m_size.m_depth;
+                    img->arraySize = (uint32_t)imgDesc.m_arraySize;
+                    img->format = (uint32_t)imgDesc.m_format;
+                    printf("img %p name [%s]\n", (void *)img, img->name);
+                    img++;
+                }
+            }
+
+            passHead->CalcBodyLen();
+            passTlv->len = passHead->bodyLen + sizeof(MsgPass);
+            uint32_t totalLen = (uint32_t)(pos - buf);
+            return totalLen;
+        }
+
+        uint32_t PassDistSystem::CreateFullscreenShadowDistPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass>prePass, Ptr<Pass> node)
+        {
+            char *pos = buf;
+            Name prePassName = prePass->GetName();
+
+            MsgTlvInfo *passTlv = (MsgTlvInfo *)pos;
+            passTlv->type = (uint32_t)DistTlvType::Pass;
+            pos += sizeof(MsgTlvInfo);
+            MsgPass *passHead = (MsgPass *)pos;
+            pos += sizeof(MsgPass);
+            passHead->createType = (uint32_t)PassCreateType::Request;
+            strncpy(passHead->name, name.GetCStr(), sizeof(passHead->name));
+            strncpy(passHead->passTemp, "FullscreenShadowTemplate", sizeof(passHead->passTemp));
+            strncpy(passHead->passClass, "", sizeof(passHead->passClass));
+
+            passHead->slotCnt = 0;
+            MsgPassConn *conn = (MsgPassConn *)pos;
+            passHead->connCnt = 3;
+            pos += sizeof(MsgPassConn) * passHead->connCnt;
+            strncpy(conn->localSlot, "DirectionalShadowmaps", sizeof(conn->localSlot));
+            strncpy(conn->refPassName, prePassName.GetCStr(), sizeof(conn->refPassName));
+            strncpy(conn->refAttName, "DirectionalShadowmaps", sizeof(conn->refAttName));
+            conn++;
+            strncpy(conn->localSlot, "Depth", sizeof(conn->localSlot));
+            strncpy(conn->refPassName, prePassName.GetCStr(), sizeof(conn->refPassName));
+            strncpy(conn->refAttName, "Depth", sizeof(conn->refAttName));
+            conn++;
+            strncpy(conn->localSlot, "DepthLinear", sizeof(conn->localSlot));
+            strncpy(conn->refPassName, prePassName.GetCStr(), sizeof(conn->refPassName));
+            strncpy(conn->refAttName, "DepthLinear", sizeof(conn->refAttName));
+            
+            MsgPassAttImg *img = (MsgPassAttImg *)pos;
+            passHead->imgCnt = 1;
+            pos += sizeof(MsgPassAttImg) * passHead->imgCnt;
+            strncpy(img->name, node->GetOutputBinding(0).GetAttachment()->m_name.GetCStr(), sizeof(img->name));
+            RHI::ImageDescriptor imgDesc = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
+            img->bindFlags = (uint32_t)imgDesc.m_bindFlags;
+            img->width = (uint32_t)imgDesc.m_size.m_width;
+            img->height = (uint32_t)imgDesc.m_size.m_height;
+            img->depth = (uint32_t)imgDesc.m_size.m_depth;
+            img->arraySize = (uint32_t)imgDesc.m_arraySize;
+            img->format = (uint32_t)imgDesc.m_format;
+
+            if (node->GetOutputBinding(0).GetAttachment()->m_sizeSource)
+            {
+                auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
+                printf("m_sizeSource atta id [%s] size from ref %p\n", node->GetOutputBinding(0).GetAttachment()->GetAttachmentId().GetCStr(),
+                    refAttachment.get());
+                if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
+                {
+                    printf("m_sizeSource ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
+                        refAttachment->m_descriptor.m_image.m_size.m_width,
+                        refAttachment->m_descriptor.m_image.m_size.m_height,
+                        refAttachment->m_descriptor.m_image.m_size.m_depth);
+                    imgDesc = refAttachment->m_descriptor.m_image;
+                    img->bindFlags = (uint32_t)imgDesc.m_bindFlags;
+                    img->width = (uint32_t)imgDesc.m_size.m_width;
+                    img->height = (uint32_t)imgDesc.m_size.m_height;
+                    img->depth = (uint32_t)imgDesc.m_size.m_depth;
+                    img->arraySize = (uint32_t)imgDesc.m_arraySize;
+                    img->format = (uint32_t)imgDesc.m_format;
+                }
+            }
+
+            passHead->bufCnt = 0;
+            passHead->CalcBodyLen();
+            passTlv->len = passHead->bodyLen + sizeof(MsgPass);
+            uint32_t totalLen = (uint32_t)(pos - buf);
+
+            return totalLen;
+        }
+
+        uint32_t PassDistSystem::CreateFullscreenShadowDistAfterPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node)
+        {
+            char *pos = buf;
+
+            MsgTlvInfo *passTlv = (MsgTlvInfo *)pos;
+            passTlv->type = (uint32_t)DistTlvType::Pass;
+            pos += sizeof(MsgTlvInfo);
+            MsgPass *passHead = (MsgPass *)pos;
+            pos += sizeof(MsgPass);
+            passHead->createType = (uint32_t)PassCreateType::Template;
+            strncpy(passHead->name, name.GetCStr(), sizeof(passHead->name));
+            strncpy(passHead->passTemp, "FullscreenShadowPassDistAfterTemplate", sizeof(passHead->passTemp));
+            strncpy(passHead->passClass, "ComputePass", sizeof(passHead->passClass));
+
+            MsgPassSlot *slot = (MsgPassSlot *)pos;
+            passHead->slotCnt = 1;
+            pos += sizeof(MsgPassSlot) * passHead->slotCnt;
+            slot->slotType = (uint32_t)PassSlotType::InputOutput;
+            strncpy(slot->slotName, "Output", sizeof(slot->slotName));
+
+            MsgPassConn *conn = (MsgPassConn *)pos;
+            passHead->connCnt = 1;
+            pos += sizeof(MsgPassConn) * passHead->connCnt;
+            strncpy(conn->localSlot, "Output", sizeof(conn->localSlot));
+            strncpy(conn->refPassName, node->GetName().GetCStr(), sizeof(conn->refPassName));
+            strncpy(conn->refAttName, "Output", sizeof(conn->refAttName));
+
+            passHead->imgCnt = 0;
+            passHead->bufCnt = 0;
+            passHead->CalcBodyLen();
+            passTlv->len = passHead->bodyLen + sizeof(MsgPass);
+            uint32_t totalLen = (uint32_t)(pos - buf);
+
+            return totalLen;
+        }
+
+        uint32_t PassDistSystem::ParsePassAttrsMsg(void *passMsgStart, PassSlotList &slots, PassConnectionList &conns,
+            PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs)
+        {
+            MsgPass *passHead = (MsgPass *)passMsgStart;
+            char *pos = (char *)passHead + sizeof(MsgPass);
+            MsgPassSlot *slotInfo = (MsgPassSlot *)pos;
+            printf("ParsePassAttrsMsg slot %u conn %u img %u buf %u\n",
+                passHead->slotCnt, passHead->connCnt, passHead->imgCnt, passHead->bufCnt);
+            for (int i = 0; i < passHead->slotCnt; i++)
+            {
+                PassSlot slot;
+                printf("Parse slot info %p\n", (void *)slotInfo);
+                slot.m_name = Name(slotInfo->slotName);
+                slot.m_slotType = (PassSlotType)slotInfo->slotType;
+                slots.emplace_back(slot);
+                printf("Recv Pass slot [%s] type %u\n", slotInfo->slotName, slotInfo->slotType);
+                slotInfo++;
+                pos += sizeof(MsgPassSlot);
+            }
+
+            MsgPassConn *connInfo = (MsgPassConn *)pos;
+            for (int i = 0; i < passHead->connCnt; i++)
+            {
+                PassConnection conn;
+                printf("Parse conn info %p\n", (void *)connInfo);
+                conn.m_localSlot = Name(connInfo->localSlot);
+                conn.m_attachmentRef.m_pass = Name(connInfo->refPassName);
+                conn.m_attachmentRef.m_attachment = Name(connInfo->refAttName);
+                conns.emplace_back(conn);
+                printf("Recv Pass conn to local slot [%s] ref pass [%s] atta [%s]\n",
+                    connInfo->localSlot, connInfo->refPassName, connInfo->refAttName);
+                connInfo++;
+                pos += sizeof(MsgPassConn);
+            }
+
+            MsgPassAttImg *imgInfo = (MsgPassAttImg *)pos;
+            for (int i = 0; i < passHead->imgCnt; i++)
+            {
+                PassImageAttachmentDesc imgDesc;
+                printf("Parse img info %p\n", (void *)imgInfo);
+                imgDesc.m_name = Name(imgInfo->name);
+                imgDesc.m_imageDescriptor.m_bindFlags = (RHI::ImageBindFlags)imgInfo->bindFlags;
+                imgDesc.m_imageDescriptor.m_size.m_width = imgInfo->width;
+                imgDesc.m_imageDescriptor.m_size.m_height = imgInfo->height;
+                imgDesc.m_imageDescriptor.m_size.m_depth = imgInfo->depth;
+                imgDesc.m_imageDescriptor.m_arraySize = (uint16_t)imgInfo->arraySize;
+                imgDesc.m_imageDescriptor.m_format = (RHI::Format)imgInfo->format;
+                imgs.emplace_back(imgDesc);
+                printf("Recv Pass atta image [%s] size 0x %x_%x_%x\n",
+                    imgInfo->name, imgInfo->width, imgInfo->height, imgInfo->depth);
+                imgInfo++;
+                pos += sizeof(MsgPassAttImg);
+            }
+
+            MsgPassAttBuf *bufInfo = (MsgPassAttBuf *)pos;
+            for (int i = 0; i < passHead->bufCnt; i++)
+            {
+                PassBufferAttachmentDesc bufDesc;
+                printf("Parse buf info %p\n", (void *)bufInfo);
+                bufDesc.m_name = Name(bufInfo->name);
+                bufDesc.m_bufferDescriptor.m_byteCount = bufInfo->size;
+                bufDesc.m_bufferDescriptor.m_alignment = bufInfo->align;
+                bufDesc.m_bufferDescriptor.m_bindFlags = (RHI::BufferBindFlags)bufInfo->bindFlags;
+                bufs.emplace_back(bufDesc);
+                printf("Recv Pass atta buffer [%s] size 0x%lx\n",
+                    bufInfo->name, bufInfo->size);
+                bufInfo++;
+                pos += sizeof(MsgPassAttBuf);
+            }
+            return 0;
+        }
+
+        Ptr<Pass> PassDistSystem::PassCreateFromTemplateMsg(char *buf, uint32_t len)
+        {
+            char *pos = buf;
+            MsgPass *passHead = (MsgPass *)pos;
+            pos += sizeof(MsgPass);
+            AZStd::shared_ptr<PassTemplate> passTemplate = AZStd::make_shared<PassTemplate>();
+            Name passName = Name(passHead->name);
+            passTemplate->m_name = Name(passHead->passTemp);
+            passTemplate->m_passClass = Name(passHead->passClass);
+
+            printf("Recv Pass %p, [%s] create from template [%s] class [%s]\n",
+                (void *)passHead, passHead->name, passHead->passTemp, passHead->passClass);
+
+            ParsePassAttrsMsg((void *)passHead, passTemplate->m_slots, passTemplate->m_connections,
+                passTemplate->m_imageAttachments, passTemplate->m_bufferAttachments);
+
+            m_templates.emplace_back(passTemplate);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, passName);
+            RenderPipelinePtr pipeline = GetDistPipeline(1);
+            if (pipeline == nullptr)
+            {
+                const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0")};
+                pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
+            }
+            pipeline->GetRootPass()->AddChild(add);
+            add->Build(false);
+            return add;
+            //return nullptr;
+        }
+
+        Ptr<Pass> PassDistSystem::PassCreateFromRequestMsg(char *buf, uint32_t len)
+        {
+            char *pos = buf;
+            MsgPass *passHead = (MsgPass *)pos;
+            pos += sizeof(MsgPass);
+
+            PassRequest req;
+            PassSlotList slots;
+            req.m_passName = Name(passHead->name);
+            req.m_templateName = Name(passHead->passTemp);
+
+            printf("Recv Pass [%s] create from request template [%s]\n",
+                passHead->name, passHead->passTemp);
+
+            ParsePassAttrsMsg((void *)passHead, slots, req.m_connections,
+                req.m_imageAttachmentOverrides, req.m_bufferAttachmentOverrides);
+
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
+            RenderPipelinePtr pipeline = GetDistPipeline(1);
+            if (pipeline == nullptr)
+            {
+                const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0")};
+                pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
+            }
+            pipeline->GetRootPass()->AddChild(add);
+            add->Build(false);
+            return add;
+            //return nullptr;
+        }
+
+        uint32_t PassDistSystem::ParsePassCreateMsg(char *buf, uint32_t len)
+        {
+            char *pos = buf;
+            uint32_t cur = 0;
+            printf("ParsePassCreateMsg %p\n", (void *)buf);
+            do
+            {
+                MsgTlvInfo *tlv = (MsgTlvInfo *)pos;
+                pos += sizeof(MsgTlvInfo);
+                cur += sizeof(MsgTlvInfo);
+                if (tlv->type != (uint32_t)DistTlvType::Pass)
+                {
+                    printf("error tlv type %u\n", tlv->type);
+                    cur += tlv->len;
+                    pos += tlv->len;
+                    continue;
+                }
+                MsgPass *passHead = (MsgPass *)pos;
+                if (passHead->createType == (uint32_t)PassCreateType::Template)
+                {
+                    Ptr<Pass> pass = PassCreateFromTemplateMsg(pos, passHead->bodyLen);
+                }
+                else if (passHead->createType == (uint32_t)PassCreateType::Request)
+                {
+                    Ptr<Pass> pass = PassCreateFromRequestMsg(pos, passHead->bodyLen);
+                }
+                else
+                {
+                    printf("error pass create type %u\n", passHead->createType);
+                }
+                cur += tlv->len;
+                pos += tlv->len;
+            } while(cur < len);
+            return cur;
+        }
+
         const char *GetSlotIntfName(PassSlot slot)
         {
             return slot.m_name.GetCStr();
@@ -569,6 +1176,24 @@ namespace AZ
             root->AddChild(prePass);
             root->AddChild(distPass);
             root->AddChild(afterPass);
+
+            char *buf = (char *)malloc(10240);
+            //memset(buf, 0xff, 10240);
+            MsgHead *msgHead = (MsgHead *)buf;
+            int cur = sizeof(MsgHead);
+            msgHead->taskId = 0;
+            cur += CreateFullscreenShadowDistPrePassMsg(buf + cur, 10240 - cur, Name(preName.c_str()), pass);
+            printf("CreateFullscreenShadowDistPrePassMsg encode len %d\n", cur);
+            cur += CreateFullscreenShadowDistPassMsg(buf + cur, 10240 - cur, Name(distName.c_str()), prePass, pass);
+            printf("CreateFullscreenShadowDistPassMsg encode len %d\n", cur);
+            cur += CreateFullscreenShadowDistAfterPassMsg(buf + cur, 10240 - cur, Name(afterName.c_str()), distPass);
+            printf("CreateFullscreenShadowDistAfterPassMsg encode len %d\n", cur);
+            msgHead->msgLen = cur;
+            EnquePassMsg((void *)buf);
+            printf("enque pass message len %u\n", cur);
+            DumpMsg("pack.txt", buf, msgHead->msgLen);
+
+            //ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead));
         }
 
         void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> &root)
@@ -698,16 +1323,26 @@ namespace AZ
             return nullptr;
         }
 
-        void PassDistSystem::SetCurDevice(int deviceId)
+        void PassDistSystem::SetActivePipeline(Name name)
         {
-            printf("PassDistSystem set current schedule device %d\n", deviceId);
-            m_curDevice = deviceId;
+            printf("PassDistSystem set current active pipeline [%s]\n", name.GetCStr());
+            m_activePipeline = name;
+            if (name.IsEmpty())
+            {
+                m_isServer = true;
+            }
+            char *path = getenv("IPC_PATH");
+            if (!path)
+            {
+                path = (char *)"/tmp/cross_gpu_ipc";
+            }
+            CommInit(m_isServer, (const char *)path);
         }
 
-        int PassDistSystem::GetCurDevice(void)
+        Name PassDistSystem::GetActivePipeline(void)
         {
-            printf("PassDistSystem get current schedule device %d\n", m_curDevice);
-            return m_curDevice;
+            printf("PassDistSystem get current active pipeline %s\n", m_activePipeline.GetCStr());
+            return m_activePipeline;
         }
 
         void PassDistSystem::Enable(void)
