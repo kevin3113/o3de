@@ -298,11 +298,6 @@ namespace AZ
                 return;
             }
 
-            if (!PassDistSystemInterface::Get()->IsActive())
-            {
-                return;
-            }
-
             AZ_PROFILE_SCOPE(RPI, "RPISystem: SimulationTick");
 
             AssetInitBus::Broadcast(&AssetInitBus::Events::PostLoadInit);
@@ -357,11 +352,6 @@ namespace AZ
                 return;
             }
 
-            if (!PassDistSystemInterface::Get()->IsActive())
-            {
-                return;
-            }
-
             AZ_PROFILE_SCOPE(RPI, "RPISystem: RenderTick");
 
             // Query system update is to increment the frame count
@@ -407,15 +397,6 @@ namespace AZ
                             def->GetRenderSettings().m_size.m_height,
                             def->GetRenderSettings().m_size.m_depth);
                     }
-                    /*
-                    if (g_dist_pipeline == nullptr) {
-                        //const RenderPipelineDescriptor desc { .m_rootPassTemplate = "DistMainPipeline", .m_name = "Test_0" };
-                        const RenderPipelineDescriptor desc { .m_name = "Test_0" };
-                        RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
-                        scenePtr->AddRenderPipeline(pipeline);
-                        g_dist_pipeline = pipeline;  
-                    }
-                    */
                 }
                 scenePtr->PrepareRender(m_prepareRenderJobPolicy, m_currentSimulationTime);
             }

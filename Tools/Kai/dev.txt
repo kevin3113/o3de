@@ -454,3 +454,23 @@ QueryPool:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/GpuQuery/QueryPool
 SavePipelineLibrary:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Shader/Shader.cpp:307
 SetDrawListTag:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RasterPass.cpp:106
 
+老的但进程工作路径：
+编译：
+~/o3deprj/O3DE/Projects/MyProject$ cmake --build build/linux --target MyProject.GameLauncher MyProject.HeadlessServerLauncher MyProject.ServerLauncher MyProject.UnifiedLauncher Editor --config release -j8
+
+执行：
+~/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release$ ./Editor &> log.log
+
+
+多进程模式工作路径：
+~/o3deprj/O3DE/Projects/RenderDaemon/build/linux/bin/release
+编译：
+cmake --build build/linux --target RenderDaemon.GameLauncher RenderDaemon.HeadlessServerLauncher RenderDaemon.ServerLauncher RenderDaemon.UnifiedLauncher Editor --config release -j8
+
+client执行：
+DIST_PIPE=Test_0 ./Editor &> log1
+选择G3
+server执行：
+./Editor &> log.log
+选则G2
+

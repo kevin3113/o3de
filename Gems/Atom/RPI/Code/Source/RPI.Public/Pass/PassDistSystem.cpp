@@ -174,9 +174,11 @@ namespace AZ
                 //const char *msg = "Send pass to clients!\n";
                 if (write(cfd, msg, msgHead->msgLen) <= 0)
                 {
+                    free(msg);
                     printf("send to client error!\n");
                     break;
-                } 
+                }
+                free(msg);
                 if (read(cfd, buf, BUF_SIZE) <= 0)
                 {
                     printf("recv from client error!\n");
@@ -221,10 +223,7 @@ namespace AZ
             {
                 if (!PassDistSystemInterface::Get()->Recv())
                 {
-                    PassDistSystemInterface::Get()->Active();
-                    //RPISystemInterface::Get()->RenderTick();
                     PassDistSystemInterface::Get()->Send();
-                    PassDistSystemInterface::Get()->Inactive();
                     continue;
                 }
                 sleep(1);
@@ -304,24 +303,29 @@ namespace AZ
 
         int PassDistSystem::Recv(void)
         {
-            char buf[10240];
+            MsgHead msgHead;
 
-            int len = read(m_sfd, buf, sizeof(MsgHead));
+            int len = read(m_sfd, (void *)&msgHead, sizeof(MsgHead));
             if (len != sizeof(MsgHead))
             {
                 printf("recv error len %d\n", len);
                 return -1;
             }
-            MsgHead *msgHead = (MsgHead *)buf;
-            printf("recv pass message task id %u len %u\n", msgHead->taskId, msgHead->msgLen);
+            char *buf = (char *)malloc(msgHead.msgLen);
+            memcpy(buf, &msgHead, sizeof(MsgHead));
+            printf("recv pass message task id %u len %u\n", msgHead.taskId, msgHead.msgLen);
             do
             {
-                len += read(m_sfd, buf + len, sizeof(buf) - len);
-            } while (len < msgHead->msgLen);
+                len += read(m_sfd, buf + len, msgHead.msgLen - len);
+            } while (len < msgHead.msgLen);
 
-            DumpMsg("recv.txt", buf, msgHead->msgLen);
+            DumpMsg("recv.txt", buf, msgHead.msgLen);
 
-            ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead));
+            printf("recv pass message enque %p len %u\n", buf, msgHead.msgLen);
+
+            EnquePassMsg((void *)buf);
+
+            //ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead));
             return 0;
         }
 
@@ -339,9 +343,9 @@ namespace AZ
             }
         }
 
-        void *PassDistSystem::DequePassMsg(void)
+        void *PassDistSystem::DequePassMsg(bool noWait)
         {
-            return m_msgQue.P();
+            return m_msgQue.P(noWait);
         }
 
         void PassDistSystem::EnquePassMsg(void *data)
@@ -382,79 +386,10 @@ namespace AZ
                     break;
                 }
             }
-            /* 1
-            pbd.m_name = "rep_0_output";
-            pbd.m_bufferDescriptor.m_byteCount = 1024;
-            req.m_bufferAttachmentOverrides.emplace_back(pbd);
-            
-            conn.m_localSlot = "Output";
-            conn.m_attachmentRef.m_pass = "This";
-            conn.m_attachmentRef.m_attachment = "rep_0_output";
-            */
-            /*2
-            if (modify->GetInputBinding(0).GetAttachment()->GetAttachmentType() == RHI::AttachmentType::Buffer)
-            {
-                PassBufferAttachmentDesc pbd;
-                pbd.m_name = modify->GetInputBinding(0).GetAttachment()->GetAttachmentId();
-                pbd.m_bufferDescriptor = modify->GetInputBinding(0).GetAttachment()->m_descriptor.m_buffer;
-                req.m_bufferAttachmentOverrides.emplace_back(pbd);
-            }
-            else
-            {
-                PassImageAttachmentDesc pid;
-                pid.m_name = modify->GetInputBinding(0).GetAttachment()->GetAttachmentId();
-                pid.m_imageDescriptor = modify->GetInputBinding(0).GetAttachment()->m_descriptor.m_image;
-                req.m_imageAttachmentOverrides.emplace_back(pid);
-            }
-            conn.m_localSlot = "Output";
-            conn.m_attachmentRef.m_pass = "This";
-            conn.m_attachmentRef.m_attachment = modify->GetInputBinding(0).GetAttachment()->GetAttachmentId();
-            req.AddInputConnection(conn);
-            */
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-            //2 add->AddAttachmentBinding(inputBinding);
             add->AddAttachmentBinding(outputBinding);
-            
             return add;
         }
-#if 0
-        Ptr<Pass> PassDistSystem::CreateFullscreanShadowPrePass(Name name, Ptr<Pass> node)
-        {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            std::string tempName = std::string("DistTemp_") + std::to_string(m_templates.size());
-            passTemplate->m_name = tempName.c_str();
-            passTemplate->m_passClass = "ComputePass";
-
-            // Slots
-            passTemplate->m_slots.resize(node->m_attachmentBindings.size());
-            for (uint32_t i = 0; i < node->GetInputCount(); i++)
-            {
-                PassSlot& slot = passTemplate->m_slots[i];
-                std::string slotName = std::string("InputOutput_") + std::to_string(i);
-                slot.m_name = slotName.c_str();
-                slot.m_slotType = PassSlotType::InputOutput;
-                PassConnection conn;
-                conn.m_localSlot = slot.m_name;
-                conn.m_attachmentRef.m_pass = node->GetInputBinding(i);
-                conn.m_attachmentRef.m_attachment = begin[i]->
-                //slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Shader;
-                //slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
-            }
-            for (uint32_t i = 0; i < node->GetOutputCount(); i++)
-            {
-                PassSlot& slot = passTemplate->m_slots[i + begin.size()];
-                std::string slotName = std::string("Output_") + std::to_string(i);
-                slot.m_name = slotName.c_str();
-                slot.m_slotType = PassSlotType::Output;
-                //slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Shader;
-                //slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
-            }
-            m_templates.emplace_back(passTemplate);
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
-            return add;
-        }
-#endif
 
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node)
         {
@@ -902,14 +837,6 @@ namespace AZ
 
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, passName);
-            RenderPipelinePtr pipeline = GetDistPipeline(1);
-            if (pipeline == nullptr)
-            {
-                const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0")};
-                pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
-            }
-            pipeline->GetRootPass()->AddChild(add);
-            add->Build(false);
             return add;
             //return nullptr;
         }
@@ -932,19 +859,11 @@ namespace AZ
                 req.m_imageAttachmentOverrides, req.m_bufferAttachmentOverrides);
 
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-            RenderPipelinePtr pipeline = GetDistPipeline(1);
-            if (pipeline == nullptr)
-            {
-                const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0")};
-                pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
-            }
-            pipeline->GetRootPass()->AddChild(add);
-            add->Build(false);
             return add;
             //return nullptr;
         }
 
-        uint32_t PassDistSystem::ParsePassCreateMsg(char *buf, uint32_t len)
+        uint32_t PassDistSystem::ParsePassCreateMsg(char *buf, uint32_t len, Ptr<ParentPass> &root)
         {
             char *pos = buf;
             uint32_t cur = 0;
@@ -962,18 +881,25 @@ namespace AZ
                     continue;
                 }
                 MsgPass *passHead = (MsgPass *)pos;
+                Ptr<Pass> pass = nullptr;
                 if (passHead->createType == (uint32_t)PassCreateType::Template)
                 {
-                    Ptr<Pass> pass = PassCreateFromTemplateMsg(pos, passHead->bodyLen);
+                    pass = PassCreateFromTemplateMsg(pos, passHead->bodyLen);
                 }
                 else if (passHead->createType == (uint32_t)PassCreateType::Request)
                 {
-                    Ptr<Pass> pass = PassCreateFromRequestMsg(pos, passHead->bodyLen);
+                    pass = PassCreateFromRequestMsg(pos, passHead->bodyLen);
                 }
                 else
                 {
                     printf("error pass create type %u\n", passHead->createType);
                 }
+                if (pass)
+                {
+                    root->AddChild(pass);
+                    pass->Build(false);
+                }
+
                 cur += tlv->len;
                 pos += tlv->len;
             } while(cur < len);
@@ -1196,14 +1122,9 @@ namespace AZ
             //ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead));
         }
 
-        void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> &root)
+        void PassDistSystem::ModifyDistPassGraph(Ptr<ParentPass> &root)
         {
-            if (!m_state)
-            {
-                printf("PassDistSystem is disabled!\n");
-                return;
-            }
-            printf("PassDistSystem pipeline [%s] root pass [%s]\n",
+            printf("ModifyDistPassGraph pipeline [%s] root pass [%s]\n",
                 root->GetRenderPipeline()->GetId().GetCStr(),
                 root->GetName().GetCStr());
 
@@ -1246,6 +1167,50 @@ namespace AZ
             }
             subPasses.clear();
             UpdateDistPasses();
+        }
+
+        void PassDistSystem::BuildDistPassGraph(Ptr<ParentPass> &root)
+        {
+            void *msg = DequePassMsg(true);
+            if (msg)
+            {
+                MsgHead *msgHead = (MsgHead *)msg;
+                printf("BuildDistPassGraph deque pass message len %u\n", msgHead->msgLen);
+                DumpMsg("proc.txt", (char *)msg, msgHead->msgLen);
+
+                ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead), root);
+            }
+            else
+            {
+                printf("BuildDistPassGraph no pass message found!\n");
+            }
+        }
+
+        void PassDistSystem::ProcessDistChanges(Ptr<ParentPass> &root)
+        {
+            if (!m_state)
+            {
+                printf("PassDistSystem is disabled!\n");
+                return;
+            }
+            if (m_isServer)
+            {
+                printf("PassDistSystem Server ModifyDistPassGraph pipeline [%s]\n",
+                    root->GetRenderPipeline()->GetId().GetCStr());
+                ModifyDistPassGraph(root);
+            }
+            else
+            {
+                printf("PassDistSystem client BuildDistPassGraph pipeline [%s]\n",
+                    root->GetRenderPipeline()->GetId().GetCStr());
+                if (root->GetRenderPipeline()->GetId() != GetActivePipeline())
+                {
+                    printf("PassDistSystem client not activate pipeline [%s]\n",
+                        GetActivePipeline().GetCStr());
+                    return;
+                }
+                BuildDistPassGraph(root);
+            }
         }
 
         bool PassDistSystem::IsDistProcessed(Name name)

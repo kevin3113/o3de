@@ -41,11 +41,16 @@ namespace AZ
                 pthread_mutex_init(&m_mutex, NULL);
                 pthread_cond_init(&m_cond, NULL);
             }
-            void *P(void)
+            void *P(bool noWait = false)
             {
                 void *data;
                 pthread_mutex_lock(&m_mutex);
                 while (m_readItr >= m_writeItr) {
+                    if (noWait)
+                    {
+                        pthread_mutex_unlock(&m_mutex);
+                        return nullptr;
+                    }
                     (void)pthread_cond_wait(&m_cond, &m_mutex);
                 }   
                 data = m_dataQue[m_readItr % MAX_QUE_LEN];
@@ -66,8 +71,8 @@ namespace AZ
             pthread_cond_t m_cond;
             pthread_mutex_t m_mutex;
             void *m_dataQue[MAX_QUE_LEN];
-            unsigned long m_writeItr = 0;
-            unsigned long m_readItr = 0;
+            uint64_t m_writeItr = 0;
+            uint64_t m_readItr = 0;
         };
 
         class PassDistSystem final
@@ -119,7 +124,7 @@ namespace AZ
 
             Ptr<Pass> PassCreateFromRequestMsg(char *buf, uint32_t len);
 
-            uint32_t ParsePassCreateMsg(char *buf, uint32_t len);
+            uint32_t ParsePassCreateMsg(char *buf, uint32_t len, Ptr<ParentPass> &root);
 
             void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
@@ -139,13 +144,17 @@ namespace AZ
 
             void Inactive(void);
 
+            void ModifyDistPassGraph(Ptr<ParentPass> &root);
+
+            void BuildDistPassGraph(Ptr<ParentPass> &root);
+
             int Connect(void) override;
 
             int Send(void) override;
 
             int Recv(void) override;
 
-            void *DequePassMsg(void) override;
+            void *DequePassMsg(bool noWait = false) override;
 
             void EnquePassMsg(void *data) override;
 

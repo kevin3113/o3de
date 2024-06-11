@@ -72,7 +72,7 @@ namespace AZ
 
             virtual int Recv(void) = 0;
 
-            virtual void *DequePassMsg(void) = 0;
+            virtual void *DequePassMsg(bool noWait = false) = 0;
 
             virtual void EnquePassMsg(void *data) = 0;
 
