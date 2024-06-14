@@ -107,6 +107,7 @@ namespace AZ::RHI
         ImageFrameAttachment* attachment = EmplaceFrameAttachment<ImageFrameAttachment>(descriptor);
         m_imageAttachments.emplace_back(attachment);
         m_transientImageAttachments.emplace_back(attachment);
+        printf("CreateTransientImage atta %s\n", attachment->GetId().GetCStr());
         return ResultCode::Success;
     }
 
@@ -120,6 +121,7 @@ namespace AZ::RHI
         BufferFrameAttachment* attachment = EmplaceFrameAttachment<BufferFrameAttachment>(descriptor);
         m_bufferAttachments.emplace_back(attachment);
         m_transientBufferAttachments.emplace_back(attachment);
+        printf("CreateTransientBuffer atta %s\n", attachment->GetId().GetCStr());
         return ResultCode::Success;
     }
 

@@ -372,11 +372,11 @@ namespace AZ
                     m_template->m_name.GetCStr(), m_template->m_passClass.GetCStr());
                 for (const PassSlot& slot : m_template->m_slots)
                 {
-                    printf("CreateBindingsFromTemplate pass [%s] slot [%s] input [%s] type [%d]\n",
-                        GetName().GetCStr(), slot.m_name.GetCStr(), slot.m_shaderInputName.GetCStr(),
-                        (int)slot.m_slotType);
                     PassAttachmentBinding binding(slot);
                     AddAttachmentBinding(binding);
+                    printf("CreateBindingsFromTemplate pass [%s] slot [%s] type [%d] binding type [%d]\n",
+                        GetName().GetCStr(), slot.m_name.GetCStr(), (int)slot.m_slotType,
+                        (int)binding.m_unifiedScopeDesc.GetType());
                 }
             }
         }
@@ -929,7 +929,7 @@ namespace AZ
                 const uint32_t slotTypeMask = (1 << uint32_t(PassSlotType::Output));
                 for (const PassConnection& outputConnection : m_template->m_connections)
                 {
-                    printf("SetupInputsFromTemplate ProcessConnection slot [%s] pass [%s] atta [%s]\n",
+                    printf("SetupOutputsFromTemplate ProcessConnection slot [%s] pass [%s] atta [%s]\n",
                         outputConnection.m_localSlot.GetCStr(),
                         outputConnection.m_attachmentRef.m_pass.GetCStr(),
                         outputConnection.m_attachmentRef.m_attachment.GetCStr());

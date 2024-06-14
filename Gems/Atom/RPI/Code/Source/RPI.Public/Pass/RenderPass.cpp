@@ -238,6 +238,18 @@ namespace AZ
         {
             for (const PassAttachmentBinding& attachmentBinding : m_attachmentBindings)
             {
+                char *attaId = (char *)"nullptr";
+                if (attachmentBinding.GetAttachment() != nullptr)
+                {
+                    attaId = (char *)attachmentBinding.GetAttachment()->GetAttachmentId().GetCStr();
+                    printf("Pass [%s] DeclareAttachmentsToFrameGraph atta %s type %d\n",
+                        GetName().GetCStr(), attaId,
+                        (int)attachmentBinding.m_unifiedScopeDesc.GetType());
+                }
+                else
+                {
+                    printf("Pass [%s] DeclareAttachmentsToFrameGraph atta nullptr\n", GetName().GetCStr());
+                }
                 if (attachmentBinding.GetAttachment() != nullptr &&
                     frameGraph.GetAttachmentDatabase().IsAttachmentValid(attachmentBinding.GetAttachment()->GetAttachmentId()))
                 {
@@ -257,6 +269,11 @@ namespace AZ
                         AZ_Assert(false, "Error, trying to bind an attachment that is neither an image nor a buffer!");
                         break;
                     }
+                }
+                else
+                {
+                    printf("Pass [%s] DeclareAttachmentsToFrameGraph atta %s is invalid\n",
+                        GetName().GetCStr(), attaId);
                 }
             }
         }

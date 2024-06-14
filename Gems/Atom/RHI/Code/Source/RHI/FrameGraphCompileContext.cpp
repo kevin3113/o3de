@@ -41,6 +41,7 @@ namespace AZ::RHI
     const BufferView* FrameGraphCompileContext::GetBufferView(const ScopeAttachment* scopeAttacment) const
     {
         const BufferScopeAttachment* attachment = azrtti_cast<const BufferScopeAttachment*>(scopeAttacment);
+        printf("Get atta from context atta addr %p\n", attachment);
         if (!attachment)
         {
             return nullptr;
@@ -50,6 +51,7 @@ namespace AZ::RHI
 
     const BufferView* FrameGraphCompileContext::GetBufferView(const AttachmentId& attachmentId) const
     {
+        printf("Get scope id [%s] atta id [%s] from context database %p\n", m_scopeId.GetCStr(), attachmentId.GetCStr(), m_attachmentDatabase);
         const ScopeAttachment* scopeAttacment = m_attachmentDatabase->FindScopeAttachment(m_scopeId, attachmentId);
         return GetBufferView(scopeAttacment);
     }

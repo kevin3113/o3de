@@ -222,6 +222,8 @@ namespace AZ
                 const auto* destinationBufferMemoryView = static_cast<const Buffer*>(descriptor.m_destinationBuffer)->GetBufferMemoryView();
                 const RHI::Format format = descriptor.m_destinationFormat;
 
+                printf("Copy ImageToBuffer src img %p, dst buf %p\n", sourceImage, destinationBufferMemoryView);
+
                 // VkBufferImageCopy::bufferRowLength is specified in texels not in bytes. 
                 // Because of this we need to convert m_sourceBytesPerRow from bytes to pixels to account 
                 // for any padding at the end of row. 

@@ -17,26 +17,7 @@
 #include <Atom/RHI/Scope.h>
 #include <Atom/RHI/SwapChain.h>
 #include <Atom/RHI/SwapChainFrameAttachment.h>
-
-
-#include <unistd.h>
-#include <sys/syscall.h>
-#define gettid() syscall(SYS_gettid)
-
-#include <execinfo.h>
-void static print_stack_graph(void)
-{
-    void *stack[32];
-    char **msg;
-    int sz = backtrace(stack, 32);
-    msg = backtrace_symbols(stack, sz);
-    printf("[bt] #0 thread %d\n", (int)gettid());
-    for (int i = 1; i < sz; i++) {
-        printf("[bt] #%d %s\n", i, msg[i]);
-    }
-}
-
-#define print_stack print_stack_graph
+#include <AzCore/Debug/CStackTrace.h>
 
 namespace AZ::RHI
 {
@@ -282,10 +263,20 @@ namespace AZ::RHI
                 (unsigned int)frameAttachment.GetImageDescriptor().m_size.m_depth,
                 frameAttachment.GetId().GetCStr());
         }
+        else
+        {
+            printf("Image %s UseAttachmentInternal last scope %p\n", frameAttachment.GetId().GetCStr(), frameAttachment.GetLastScope());
+        }
+
+        printf("Image %s frame atta addr %p scope %s database %p\n",
+            frameAttachment.GetId().GetCStr(), (void *)&frameAttachment,
+            m_currentScope->GetId().GetCStr(), (void *)&m_attachmentDatabase);
 
         ResolveScopeAttachment* scopeAttachment =
             m_attachmentDatabase.EmplaceScopeAttachment<ResolveScopeAttachment>(
                 *m_currentScope, frameAttachment, descriptor);
+
+        printf("Image %s after emplace frame atta addr %p\n", frameAttachment.GetId().GetCStr(), (void *)&(scopeAttachment->GetFrameAttachment()));
 
         m_currentScope->m_attachments.push_back(scopeAttachment);
         m_currentScope->m_imageAttachments.push_back(scopeAttachment);
@@ -328,13 +319,18 @@ namespace AZ::RHI
         }
         else
         {
-            printf("Buffer UseAttachmentInternal last scope %p\n", frameAttachment.GetLastScope());
+            printf("Buffer %s UseAttachmentInternal last scope %p\n", frameAttachment.GetId().GetCStr(), frameAttachment.GetLastScope());
         }
+
+        printf("Buffer %s frame atta addr %p scope %s database %p\n",
+            frameAttachment.GetId().GetCStr(), (void *)&frameAttachment,
+            m_currentScope->GetId().GetCStr(), (void *)&m_attachmentDatabase);
 
         BufferScopeAttachment* scopeAttachment =
             m_attachmentDatabase.EmplaceScopeAttachment<BufferScopeAttachment>(
                 *m_currentScope, frameAttachment, usage, access, descriptor);
 
+        printf("Buffer %s after emplace frame atta addr %p\n", frameAttachment.GetId().GetCStr(), (void *)&(scopeAttachment->GetFrameAttachment()));
         m_currentScope->m_attachments.push_back(scopeAttachment);
         m_currentScope->m_bufferAttachments.push_back(scopeAttachment);
         if (frameAttachment.GetLifetimeType() == AttachmentLifetimeType::Transient)
@@ -350,10 +346,12 @@ namespace AZ::RHI
         BufferFrameAttachment* attachment = m_attachmentDatabase.FindAttachment<BufferFrameAttachment>(descriptor.m_attachmentId);
         if (attachment)
         {
-            printf("buffer UseAttachment id %s\n", descriptor.m_attachmentId.GetCStr());
+            printf("buffer UseAttachment id %s addr %p\n", descriptor.m_attachmentId.GetCStr(), attachment);
             UseAttachmentInternal(*attachment, usage, access, descriptor);
             return ResultCode::Success;
         }
+
+        printf("No compatible buffer attachment found for id: %s\n", descriptor.m_attachmentId.GetCStr());
 
         AZ_Error("FrameGraph", false, "No compatible buffer attachment found for id: '%s'", descriptor.m_attachmentId.GetCStr());
         return ResultCode::InvalidArgument;
@@ -366,10 +364,12 @@ namespace AZ::RHI
         ImageFrameAttachment* attachment = m_attachmentDatabase.FindAttachment<ImageFrameAttachment>(descriptor.m_attachmentId);
         if (attachment)
         {
-            printf("image UseAttachment id %s\n", descriptor.m_attachmentId.GetCStr());
+            printf("image UseAttachment id %s addr %p\n", descriptor.m_attachmentId.GetCStr(), attachment);
             UseAttachmentInternal(*attachment, usage, access, descriptor);
             return ResultCode::Success;
         }
+
+        printf("No compatible image attachment found for id: %s\n", descriptor.m_attachmentId.GetCStr());
 
         AZ_Error("FrameGraph", false, "No compatible image attachment found for id: '%s'", descriptor.m_attachmentId.GetCStr());
         return ResultCode::InvalidArgument;

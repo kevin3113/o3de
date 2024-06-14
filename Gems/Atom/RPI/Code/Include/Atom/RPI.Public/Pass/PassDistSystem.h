@@ -109,6 +109,8 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node);
 
+            Ptr<Pass> CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node);
+
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);

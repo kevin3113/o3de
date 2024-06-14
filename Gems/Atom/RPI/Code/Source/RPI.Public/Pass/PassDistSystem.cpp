@@ -504,17 +504,63 @@ namespace AZ
             AZStd::shared_ptr<PassTemplate> passTemplate;
             passTemplate = AZStd::make_shared<PassTemplate>();
             passTemplate->m_name = "FullscreenShadowPassDistAfterTemplate";
+            passTemplate->m_passClass = "CopyPass";
+
+            PassSlot slot;
+            PassConnection conn;
+
+            slot.m_name = "ImgInput";
+            slot.m_slotType = PassSlotType::Input;
+            conn.m_localSlot = slot.m_name;
+            passTemplate->m_slots.emplace_back(slot);
+            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_attachment = "Output";
+            passTemplate->m_connections.emplace_back(conn);
+
+            PassBufferAttachmentDesc pbd;
+            pbd.m_name = "BufferHostVisible";
+            //pbd.m_sizeSource.m_source.m_pass = node->GetName(); // buffer not support sizeSource
+            //pbd.m_sizeSource.m_source.m_attachment = "Output";
+            RHI::ImageDescriptor imgDesc = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
+            pbd.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(imgDesc.m_format) *
+                imgDesc.m_size.m_width * imgDesc.m_size.m_height * imgDesc.m_size.m_depth;
+            pbd.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
+            passTemplate->m_bufferAttachments.emplace_back(pbd);
+
+            slot.m_name = "BufOutput";
+            slot.m_slotType = PassSlotType::Output;
+            conn.m_localSlot = slot.m_name;
+            passTemplate->m_slots.emplace_back(slot);
+            conn.m_attachmentRef.m_pass = "This";
+            conn.m_attachmentRef.m_attachment = pbd.m_name;
+            passTemplate->m_connections.emplace_back(conn);
+
+            auto passData = AZStd::make_shared<CopyPassData>();
+            passData->m_cloneInput = false;
+            passData->m_bufferDestinationBytesPerRow = imgDesc.m_size.m_width * RHI::GetFormatSize(imgDesc.m_format);
+            passTemplate->m_passData = passData;
+
+            m_templates.emplace_back(passTemplate);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
+            return add;
+        }
+
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node)
+        {
+            AZStd::shared_ptr<PassTemplate> passTemplate;
+            passTemplate = AZStd::make_shared<PassTemplate>();
+            passTemplate->m_name = "FullscreenShadowPassDistAfterOutTemplate";
             passTemplate->m_passClass = "ComputePass";
 
             PassSlot slot;
             PassConnection conn;
 
-            slot.m_name = "Output";
+            slot.m_name = "AfterOutput";
             slot.m_slotType = PassSlotType::InputOutput;
             conn.m_localSlot = slot.m_name;
             passTemplate->m_slots.emplace_back(slot);
             conn.m_attachmentRef.m_pass = node->GetName();
-            conn.m_attachmentRef.m_attachment = "Output";
+            conn.m_attachmentRef.m_attachment = "BufOutput";
             passTemplate->m_connections.emplace_back(conn);
 
             m_templates.emplace_back(passTemplate);
@@ -1095,13 +1141,16 @@ namespace AZ
             std::string  preName = orig + "_DistPre";
             std::string  distName = orig + "_Dist";
             std::string  afterName = orig + "_DistAfter";
+            std::string  outName = orig + "_DistAfterOut";
             Name newName = Name(preName.c_str());
             Ptr<Pass> prePass = CreateFullscreenShadowDistPrePass(Name(preName.c_str()), pass);
             Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass, pass);
             Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass);
+            Ptr<Pass> outPass = CreateFullscreenShadowDistAfterOutPass(Name(outName.c_str()), afterPass);
             root->AddChild(prePass);
             root->AddChild(distPass);
             root->AddChild(afterPass);
+            root->AddChild(outPass);
 
             char *buf = (char *)malloc(10240);
             //memset(buf, 0xff, 10240);

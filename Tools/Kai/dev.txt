@@ -373,6 +373,44 @@ struct PassAttachmentDesc
 #include <AzCore/Debug/CStackTrace.h>
 
 
+transient buffer create:
+
+Pass::CreateTransientAttachments -> FrameGraphAttachmentDatabase::CreateTransientBuffer -> EmplaceFrameAttachment -> new BufferFrameAttachment(descriptor)
+
+
+SetResource():
+AZ::RHI::FrameGraphCompiler::CompileTransientAttachments(AZ::RHI::FrameGraph&, AZ::RHI::TransientAttachmentPool&, AZ::RHI::FrameSchedulerCompileFlags, AZ::RHI::FrameSchedulerStatisticsFlags)
+AZ::RHI::FrameGraphCompiler::Compile(AZ::RHI::FrameGraphCompileRequest const&)
+AZ::RHI::FrameScheduler::Compile(AZ::RHI::FrameSchedulerCompileRequest const&)
+AZ::RHI::RHISystem::FrameUpdate(AZStd::function<void (AZ::RHI::FrameGraphBuilder&)>)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+
+FindScopeAttachment
+[bt] #0 thread 17769 CopyImageToBuffer:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/CopyPass.cpp:231 info [None] 
+AZ::RHI::FrameScheduler::CompileProducers()
+AZ::RHI::FrameScheduler::Compile(AZ::RHI::FrameSchedulerCompileRequest const&)
+AZ::RHI::RHISystem::FrameUpdate(AZStd::function<void (AZ::RHI::FrameGraphBuilder&)>)
+AZ::RPI::RPISystem::RenderTick() [clone .part.0]
+AZ::RPI::RPISystemComponent::OnSystemTick()
+void AZ::Internal::EBusContainer<AZ::SystemTickEvents, AZ::SystemTickEvents, (AZ::EBusAddressPolicy)0, (AZ::EBusHandlerPolicy)1>::Dispatcher<AZ::EBus<AZ::SystemTickEvents, AZ::SystemTickEvents> >::Broadcast<void (AZ::SystemTickEvents::*)()>(void (AZ::SystemTickEvents::*&&)())
+AZ::ComponentApplication::TickSystem()
+
+scope atta 引用了database中的FrameAttachement
+activebuffer/activeImage 设置了database中的FrameAttachement的resource
+
+1、创建时关联类型
+CreateBindingsFromTemplate : attachmentBinding.m_unifiedScopeDesc.GetType()/m_type == RHI::AttachmentType::Image
+
+2、处理连接关系时关联类型
+attachmentBinding.m_unifiedScopeDesc.m_type = PassAttachmentBinding::PassAttachmentBinding() slot.m_bufferViewDesc != nullptr, m_unifiedScopeDesc.SetAsBuffer
+                                              PassAttachmentBinding::SetAttachment() m_unifiedScopeDesc.GetType() == RHI::AttachmentType::Uninitialized, attachment->GetAttachmentType()
+
+descriptor.m_heapMemoryLevel
+
 多device:
 1、RPISystem::Initialize:
 m_querySystem.Init(m_descriptor.m_gpuQuerySystemDescriptor);
