@@ -226,8 +226,10 @@ namespace AZ
             // Destination Buffer
             PassAttachmentBinding& copyDest = GetOutputBinding(0);
             copyDesc.m_destinationBuffer = context.GetBuffer(copyDest.GetAttachment()->GetAttachmentId());
-            printf("CopyImageToBuffer pass [%s] buf atta id [%s] pointer %p\n",
-                GetName().GetCStr(), copyDest.GetAttachment()->GetAttachmentId().GetCStr(), copyDesc.m_destinationBuffer);
+            printf("CopyImageToBuffer pass [%s] image format %d/%d buf atta id [%s] pointer %p\n",
+                GetName().GetCStr(), (int)sourceImage->GetDescriptor().m_format,
+                (int)RHI::GetFormatSize(sourceImage->GetDescriptor().m_format),
+                copyDest.GetAttachment()->GetAttachmentId().GetCStr(), copyDesc.m_destinationBuffer);
             //print_stack();
             copyDesc.m_destinationOffset = m_data.m_bufferDestinationOffset;
             copyDesc.m_destinationBytesPerRow = m_data.m_bufferDestinationBytesPerRow;

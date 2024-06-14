@@ -107,7 +107,7 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node);
 
-            Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node);
+            Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             Ptr<Pass> CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node);
 

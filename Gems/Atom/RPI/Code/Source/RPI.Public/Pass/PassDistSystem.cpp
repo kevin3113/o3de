@@ -499,7 +499,7 @@ namespace AZ
             return add;
         }
 
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> node)
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> prePass, Ptr<Pass> node)
         {
             AZStd::shared_ptr<PassTemplate> passTemplate;
             passTemplate = AZStd::make_shared<PassTemplate>();
@@ -513,17 +513,19 @@ namespace AZ
             slot.m_slotType = PassSlotType::Input;
             conn.m_localSlot = slot.m_name;
             passTemplate->m_slots.emplace_back(slot);
-            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_pass = prePass->GetName();
             conn.m_attachmentRef.m_attachment = "Output";
             passTemplate->m_connections.emplace_back(conn);
 
             PassBufferAttachmentDesc pbd;
             pbd.m_name = "BufferHostVisible";
-            //pbd.m_sizeSource.m_source.m_pass = node->GetName(); // buffer not support sizeSource
-            //pbd.m_sizeSource.m_source.m_attachment = "Output";
-            RHI::ImageDescriptor imgDesc = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
+            auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
+            RHI::ImageDescriptor imgDesc = refAttachment->m_descriptor.m_image;
             pbd.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(imgDesc.m_format) *
                 imgDesc.m_size.m_width * imgDesc.m_size.m_height * imgDesc.m_size.m_depth;
+            printf("image size is %d %d %d, format %d size %d\n",
+                (int)imgDesc.m_size.m_width, (int)imgDesc.m_size.m_height, (int)imgDesc.m_size.m_depth,
+                (int)imgDesc.m_format, (int)RHI::GetFormatSize(imgDesc.m_format));
             pbd.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
             passTemplate->m_bufferAttachments.emplace_back(pbd);
 
@@ -602,10 +604,11 @@ namespace AZ
                     refAttachment.get());
                 if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
                 {
-                    printf("m_sizeSource ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
+                    printf("m_sizeSource ref to [%s] size 0x %x_%x_%x format %d\n", refAttachment->GetAttachmentId().GetCStr(),
                         refAttachment->m_descriptor.m_image.m_size.m_width,
                         refAttachment->m_descriptor.m_image.m_size.m_height,
-                        refAttachment->m_descriptor.m_image.m_size.m_depth);
+                        refAttachment->m_descriptor.m_image.m_size.m_depth,
+                        (int)refAttachment->m_descriptor.m_image.m_format);
                     outDesc.m_imageDescriptor = refAttachment->m_descriptor.m_image;
                 }
             }
@@ -1145,7 +1148,7 @@ namespace AZ
             Name newName = Name(preName.c_str());
             Ptr<Pass> prePass = CreateFullscreenShadowDistPrePass(Name(preName.c_str()), pass);
             Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass, pass);
-            Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass);
+            Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass, pass);
             Ptr<Pass> outPass = CreateFullscreenShadowDistAfterOutPass(Name(outName.c_str()), afterPass);
             root->AddChild(prePass);
             root->AddChild(distPass);
