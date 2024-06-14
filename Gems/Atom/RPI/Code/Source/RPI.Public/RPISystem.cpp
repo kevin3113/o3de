@@ -55,8 +55,6 @@ AZ_DEFINE_BUDGET(RPI);
 // This is useful for rendering engineers debugging a crash in the RPI/RHI layers
 #define AZ_RPI_PRINT_GLOBAL_STATE_ON_ASSERT 0
 
-#define NVIDIA 1
-#define INTEL 0
 uint64_t g_main_pipeline_start = 1000000;
 
 namespace AZ
@@ -97,11 +95,11 @@ namespace AZ
             // Init RHI device(s)
             //auto commandLineMultipleDevicesValue{ RHI::GetCommandLineValue("device-count") };
             //m_rhiSystem.InitDevices((commandLineMultipleDevicesValue != "") ? AZStd::stoi(commandLineMultipleDevicesValue) : 1);
-            int initDevId = NVIDIA;
-            char *vendor = getenv("DEV_VENDOR");
-            if (vendor && 0 == strcmp((const char *)vendor, "Intel"))
+            int initDevId = 0;
+            char *devIdStr = getenv("DEV_ID");
+            if (devIdStr)
             {
-                initDevId = INTEL;
+                initDevId = atoi(devIdStr);
             }
             m_rhiSystem.InitDevices(initDevId);
 

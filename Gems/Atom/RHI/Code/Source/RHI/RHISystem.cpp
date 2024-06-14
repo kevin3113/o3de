@@ -116,51 +116,28 @@ namespace AZ::RHI
 
         RHI::PhysicalDeviceList usePhysicalDevices;
 
-        AZStd::string preferredUserAdapterName = "Nvidia";
-        if (deviceCount == 0)
         {
-            preferredUserAdapterName = "Intel";
-        }
-/*
-        if (deviceCount > 1)
-        {
-            AZ_Printf("RHISystem", "\tUsing multiple devices\n");
-
-            usePhysicalDevices = AZStd::move(physicalDevices);
-        }
-        else
-*/        
-        {
-            //AZStd::string preferredUserAdapterName = RHI::GetCommandLineValue("forceAdapter");
-            //AZStd::string preferredUserAdapterName = "Intel";
-            AZStd::to_lower(preferredUserAdapterName.begin(), preferredUserAdapterName.end());
-            bool findPreferredUserDevice = preferredUserAdapterName.size() > 0;
-
             RHI::PhysicalDevice* preferredUserDevice{};
-            RHI::PhysicalDevice* preferredVendorDevice{};
+
+            int preferIndex = 0;
 
             for (RHI::Ptr<RHI::PhysicalDevice>& physicalDevice : physicalDevices)
             {
                 const RHI::PhysicalDeviceDescriptor& descriptor = physicalDevice->GetDescriptor();
 
                 AZ_Printf("RHISystem", "\tEnumerated physical device: %s\n", descriptor.m_description.c_str());
-                if (findPreferredUserDevice)
+
+                if (descriptor.m_vendorId == RHI::VendorId::nVidia)
                 {
-                    AZStd::string descriptorLowerCase = descriptor.m_description;
-                    AZStd::to_lower( descriptorLowerCase.begin(), descriptorLowerCase.end());
-                    if (!preferredUserDevice && descriptorLowerCase.contains(preferredUserAdapterName))
+                    printf("Prefer Device Index %d, %s\n", preferIndex, descriptor.m_description.c_str());
+                    if (deviceCount == preferIndex)
                     {
+                        printf("Using this device!\n");
                         preferredUserDevice = physicalDevice.get();
                     }
-                }
-                // Record the first nVidia or AMD device we find.
-                if (!preferredVendorDevice && (descriptor.m_vendorId == RHI::VendorId::AMD || descriptor.m_vendorId == RHI::VendorId::nVidia))
-                {
-                    preferredVendorDevice = physicalDevice.get();
+                    preferIndex++;
                 }
             }
-
-            AZ_Warning("RHISystem", preferredUserAdapterName.empty() || preferredUserDevice, "Specified adapter name not found: '%s'", preferredUserAdapterName.c_str());
 
             RHI::PhysicalDevice* physicalDeviceFound{};
 
@@ -168,11 +145,6 @@ namespace AZ::RHI
             {
                 // First, prefer the user specified device if found.
                 physicalDeviceFound = preferredUserDevice;
-            }
-            else if (preferredVendorDevice)
-            {
-                // Second, prefer specific vendor devices.
-                physicalDeviceFound = preferredVendorDevice;
             }
             else
             {
@@ -210,14 +182,6 @@ namespace AZ::RHI
             printf("Init Device ID %d device type %d\n", deviceCount, (int)devPhyDesc.m_type);
             printf("Init Device ID %d device vender id %d\n", deviceCount, (int)devPhyDesc.m_vendorId);
             printf("Init Device ID %d device id %d\n", deviceCount, (int)devPhyDesc.m_deviceId);
-        }
-
-        for (auto index{ 0 }; m_devices.size() < deviceCount; index++)
-        {
-            // We do not have enough physical devices for the requested device count
-            // Virtualize the existing devices up to the required number
-            auto deviceIndex{ AddVirtualDevice(m_devices[index]->GetDeviceIndex()) };
-            AZ_Printf("RHISystem", "\tVirtualized device %d from device %d\n", deviceIndex.value(), m_devices[index]->GetDeviceIndex());
         }
 
         if (m_devices.empty())
