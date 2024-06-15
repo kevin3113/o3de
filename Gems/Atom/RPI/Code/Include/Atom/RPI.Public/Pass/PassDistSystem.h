@@ -150,15 +150,23 @@ namespace AZ
 
             void BuildDistPassGraph(Ptr<ParentPass> &root);
 
-            int Connect(void) override;
+            int Connect(int sfd) override;
 
-            int Send(void) override;
+            int Send(int sfd) override;
 
-            int Recv(void) override;
+            int Recv(int sfd) override;
 
             void *DequePassMsg(bool noWait = false) override;
 
             void EnquePassMsg(void *data) override;
+
+            void *DequeInputDataMsg(bool noWait = false) override;
+
+            void EnqueInputDataMsg(void *data) override;
+
+            void *DequeOutputDataMsg(bool noWait = false) override;
+
+            void EnqueOutputDataMsg(void *data) override;
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
@@ -192,13 +200,15 @@ namespace AZ
 
             Name m_modify;
 
-            int m_sfd = -1;
-
             bool m_isServer = false;
 
             Name m_commPath;
 
             WaitQueue m_msgQue;
+
+            WaitQueue m_dataInputQue;
+
+            WaitQueue m_dataOutputQue;
 
         };
     }   // namespace RPI

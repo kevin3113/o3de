@@ -66,15 +66,23 @@ namespace AZ
 
             virtual void Inactive(void) = 0;
 
-            virtual int Connect(void) = 0;
+            virtual int Connect(int sfd) = 0;
 
-            virtual int Send(void) = 0;
+            virtual int Send(int sfd) = 0;
 
-            virtual int Recv(void) = 0;
+            virtual int Recv(int sfd) = 0;
 
             virtual void *DequePassMsg(bool noWait = false) = 0;
 
             virtual void EnquePassMsg(void *data) = 0;
+
+            virtual void *DequeInputDataMsg(bool noWait = false) = 0;
+
+            virtual void EnqueInputDataMsg(void *data) = 0;
+
+            virtual void *DequeOutputDataMsg(bool noWait = false) = 0;
+
+            virtual void EnqueOutputDataMsg(void *data) = 0;
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 

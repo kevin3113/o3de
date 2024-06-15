@@ -15,8 +15,10 @@ namespace AZ
 {
     namespace RPI
     {
-        enum class DistTlvType : uint32_t {
-            Pass = 0,
+        enum class DistMsgType : uint32_t {
+            PassGraph = 0,
+            PassData,
+            Debug,
             Count
         };
 
@@ -28,12 +30,7 @@ namespace AZ
 
         struct MsgHead {
             uint32_t msgLen;
-            uint32_t taskId;
-        };
-
-        struct MsgTlvInfo {
-            uint32_t type;
-            uint32_t len;
+            uint32_t msgType;
         };
 
         struct MsgPassSlot {
@@ -66,9 +63,9 @@ namespace AZ
             char name[PASS_NAME_MAX];
         };
 
-        struct MsgPass {
+        struct MsgPassGraph {
+            uint32_t passLen;
             uint32_t createType;
-            uint32_t bodyLen;
             uint16_t slotCnt;
             uint16_t connCnt;
             uint16_t imgCnt;
@@ -79,11 +76,22 @@ namespace AZ
             char passClass[PASS_NAME_MAX];
             void CalcBodyLen(void)
             {
-                bodyLen = sizeof(MsgPassSlot) * slotCnt
+                passLen = sizeof(MsgPassGraph)
+                    + sizeof(MsgPassSlot) * slotCnt
                     + sizeof(MsgPassConn) * connCnt
                     + sizeof(MsgPassAttImg) * imgCnt
                     + sizeof(MsgPassAttBuf) * bufCnt;
             }
+        };
+
+        struct MsgPassData {
+            uint32_t dataLen;
+            uint32_t nodeId;
+        };
+
+        struct MsgDebugInfo {
+            uint32_t infoLen;
+            uint32_t nodeId;
         };
     }
 }
