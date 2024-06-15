@@ -65,6 +65,7 @@ set(FILES
     Include/Atom/RPI.Public/Pass/AttachmentReadback.h
     Include/Atom/RPI.Public/Pass/ComputePass.h
     Include/Atom/RPI.Public/Pass/CopyPass.h
+    Include/Atom/RPI.Public/Pass/CommPass.h
     Include/Atom/RPI.Public/Pass/FullscreenTrianglePass.h
     Include/Atom/RPI.Public/Pass/ParentPass.h
     Include/Atom/RPI.Public/Pass/Pass.h
@@ -153,6 +154,7 @@ set(FILES
     Source/RPI.Public/Pass/AttachmentReadback.cpp
     Source/RPI.Public/Pass/ComputePass.cpp
     Source/RPI.Public/Pass/CopyPass.cpp
+    Source/RPI.Public/Pass/CommPass.cpp
     Source/RPI.Public/Pass/FullscreenTrianglePass.cpp
     Source/RPI.Public/Pass/ParentPass.cpp
     Source/RPI.Public/Pass/Pass.cpp

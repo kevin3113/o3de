@@ -10,6 +10,7 @@
 
 #include <Atom/RPI.Public/Pass/ComputePass.h>
 #include <Atom/RPI.Public/Pass/CopyPass.h>
+#include <Atom/RPI.Public/Pass/CommPass.h>
 #include <Atom/RPI.Public/Pass/FullscreenTrianglePass.h>
 #include <Atom/RPI.Public/Pass/ParentPass.h>
 #include <Atom/RPI.Public/Pass/PassLibrary.h>
@@ -64,6 +65,7 @@ namespace AZ
             AddPassCreator(Name("RasterPass"), &RasterPass::Create);
             AddPassCreator(Name("SlowClearPass"), &SlowClearPass::Create);
             AddPassCreator(Name("CopyPass"), &CopyPass::Create);
+            AddPassCreator(Name("CommPass"), &CommPass::Create);
             AddPassCreator(Name("FullScreenTriangle"), &FullscreenTrianglePass::Create);
             AddPassCreator(Name("ComputePass"), &ComputePass::Create);
             AddPassCreator(Name("MSAAResolvePass"), &MSAAResolvePass::Create);

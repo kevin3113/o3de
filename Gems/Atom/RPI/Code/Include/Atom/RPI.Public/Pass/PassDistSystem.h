@@ -154,6 +154,8 @@ namespace AZ
 
             int Send(int sfd) override;
 
+            int SendQue(int sfd) override;
+
             int Recv(int sfd) override;
 
             void *DequePassMsg(bool noWait = false) override;
@@ -167,6 +169,10 @@ namespace AZ
             void *DequeOutputDataMsg(bool noWait = false) override;
 
             void EnqueOutputDataMsg(void *data) override;
+
+            int SendData(void *data, uint32_t len) override;
+
+            int RecvData(void **data, uint32_t *len) override;
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 

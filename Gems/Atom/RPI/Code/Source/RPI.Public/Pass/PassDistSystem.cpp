@@ -30,7 +30,7 @@
 #include <Atom/RPI.Public/RenderPipeline.h>
 
 #include <Atom/RPI.Reflect/Pass/ComputePassData.h>
-#include <Atom/RPI.Reflect/Pass/CopyPassData.h>
+#include <Atom/RPI.Reflect/Pass/CommPassData.h>
 #include <Atom/RPI.Reflect/Pass/DownsampleMipChainPassData.h>
 #include <Atom/RPI.Reflect/Pass/FullscreenTrianglePassData.h>
 #include <Atom/RPI.Reflect/Pass/EnvironmentCubeMapPassData.h>
@@ -273,7 +273,7 @@ namespace AZ
             return nullptr;
         }
 
-        void *ClientDaemon(void *arg)
+        void *ClientRecvThread(void *arg)
         {
             int sfd = *(int *)arg;
             for (;;)
@@ -281,6 +281,21 @@ namespace AZ
                 if (!PassDistSystemInterface::Get()->Recv(sfd))
                 {
                     PassDistSystemInterface::Get()->Send(sfd);
+                    continue;
+                }
+                sleep(1);
+                PassDistSystemInterface::Get()->Connect(sfd);
+            }
+            return nullptr;
+        }
+
+        void *ClientSendThread(void *arg)
+        {
+            int sfd = *(int *)arg;
+            for (;;)
+            {
+                if (!PassDistSystemInterface::Get()->SendQue(sfd))
+                {
                     continue;
                 }
                 sleep(1);
@@ -326,7 +341,8 @@ namespace AZ
             }
             else
             {
-                CreateThread(&ClientDaemon, (void *)&sfd);
+                CreateThread(&ClientRecvThread, (void *)&sfd);
+                CreateThread(&ClientSendThread, (void *)&sfd);
                 printf("Dist Daemon thread create ok!\n");
             }
         }
@@ -364,6 +380,30 @@ namespace AZ
                 printf("partial/failed write error!\n");
                 return -1;
             }
+            return 0;
+        }
+
+        int PassDistSystem::SendQue(int sfd)
+        {
+            char *msg;
+            if (m_isServer)
+            {
+                printf("error server use Send method!\n");
+                return -1;
+            }
+            else
+            {
+                msg = (char *)DequeOutputDataMsg();
+            }
+            MsgHead *msgHead = (MsgHead *)msg;
+            if (write(sfd, msg, msgHead->msgLen) != msgHead->msgLen)
+            {
+                printf("partial/failed write error!\n");
+                free(msg);
+                return -1;
+            }
+            printf("PassDistSystem::SendQue\n");
+            free(msg);
             return 0;
         }
 
@@ -458,6 +498,51 @@ namespace AZ
         void PassDistSystem::EnqueOutputDataMsg(void *data)
         {
             m_dataOutputQue.V(data);
+        }
+
+        int PassDistSystem::SendData(void *data, uint32_t len)
+        {
+            char *msg = (char *)malloc(sizeof(MsgHead) + sizeof(MsgPassData) + len);
+            MsgHead *msgHead = (MsgHead *)msg;
+            msgHead->msgType = (uint32_t)DistMsgType::PassData;
+            msgHead->msgLen = sizeof(MsgHead) + sizeof(MsgPassData) + len;
+            MsgPassData *passData = (MsgPassData *)(msg + sizeof(MsgHead));
+            passData->dataLen = sizeof(MsgPassData) + len;
+            passData->nodeId = 0;
+            memcpy(msg + sizeof(MsgHead) + sizeof(MsgPassData), data, len);
+            free(data);
+            if (m_isServer)
+            {
+                EnqueInputDataMsg((void *)msg);
+            }
+            else
+            {
+                EnqueOutputDataMsg((void *)msg);
+            }
+            printf("PassDistSystem::SendData cur is server %d put msg len %u\n", 
+                (int)m_isServer, len);
+            return 0;
+        }
+
+        int PassDistSystem::RecvData(void **data, uint32_t *len)
+        {
+            char *msg;
+            if (m_isServer)
+            {
+                msg = (char *)DequeOutputDataMsg();
+            }
+            else
+            {
+                msg = (char *)DequeInputDataMsg();
+            }
+            MsgPassData *passData = (MsgPassData *)(msg + sizeof(MsgHead));
+            *len = passData->dataLen - sizeof(MsgPassData);
+            *data = malloc(*len);
+            memcpy(*data, msg + sizeof(MsgHead) + sizeof(MsgPassData), *len);
+            free(msg);
+            printf("PassDistSystem::RecvData cur is server %d get msg len %u\n", 
+                (int)m_isServer, *len);
+            return 0;
         }
 
         Ptr<Pass> PassDistSystem::CreateDistPass(Name name, Ptr<Pass> &modify)
@@ -611,7 +696,7 @@ namespace AZ
             AZStd::shared_ptr<PassTemplate> passTemplate;
             passTemplate = AZStd::make_shared<PassTemplate>();
             passTemplate->m_name = "FullscreenShadowPassDistAfterTemplate";
-            passTemplate->m_passClass = "CopyPass";
+            passTemplate->m_passClass = "CommPass";
 
             PassSlot slot;
             PassConnection conn;
@@ -644,8 +729,10 @@ namespace AZ
             conn.m_attachmentRef.m_attachment = pbd.m_name;
             passTemplate->m_connections.emplace_back(conn);
 
-            auto passData = AZStd::make_shared<CopyPassData>();
-            passData->m_cloneInput = false;
+            auto passData = AZStd::make_shared<CommPassData>();
+            //passData->m_cloneInput = false;
+            passData->m_recvData = true;
+            passData->m_submit = false;
             passData->m_bufferDestinationBytesPerRow = imgDesc.m_size.m_width * RHI::GetFormatSize(imgDesc.m_format);
             passTemplate->m_passData = passData;
 
@@ -868,7 +955,7 @@ namespace AZ
             passHead->createType = (uint32_t)PassCreateType::Template;
             strncpy(passHead->name, name.GetCStr(), sizeof(passHead->name));
             strncpy(passHead->passTemp, "FullscreenShadowPassDistAfterTemplate", sizeof(passHead->passTemp));
-            strncpy(passHead->passClass, "ComputePass", sizeof(passHead->passClass));
+            strncpy(passHead->passClass, "CommPass", sizeof(passHead->passClass));
 
             MsgPassSlot *slot = (MsgPassSlot *)pos;
             passHead->slotCnt = 1;
@@ -978,6 +1065,16 @@ namespace AZ
 
             ParsePassAttrsMsg((void *)passHead, passTemplate->m_slots, passTemplate->m_connections,
                 passTemplate->m_imageAttachments, passTemplate->m_bufferAttachments);
+
+            if (passTemplate->m_passClass == Name("CommPass"))
+            {
+                auto passData = AZStd::make_shared<CommPassData>();
+                //passData->m_cloneInput = false;
+                passData->m_sendData = true;
+                passData->m_submit = false;
+                //passData->m_bufferDestinationBytesPerRow = imgDesc.m_size.m_width * RHI::GetFormatSize(imgDesc.m_format);
+                passTemplate->m_passData = passData;
+            }
 
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, passName);

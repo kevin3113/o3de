@@ -68,6 +68,7 @@ set(FILES
     Include/Atom/RPI.Reflect/Material/MaterialVersionUpdate.h
     Include/Atom/RPI.Reflect/Pass/ComputePassData.h
     Include/Atom/RPI.Reflect/Pass/CopyPassData.h
+    Include/Atom/RPI.Reflect/Pass/CommPassData.h
     Include/Atom/RPI.Reflect/Pass/DownsampleMipChainPassData.h
     Include/Atom/RPI.Reflect/Pass/FullscreenTrianglePassData.h
     Include/Atom/RPI.Reflect/Pass/PassAsset.h

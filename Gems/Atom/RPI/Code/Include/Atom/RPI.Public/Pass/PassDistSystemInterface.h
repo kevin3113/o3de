@@ -70,6 +70,8 @@ namespace AZ
 
             virtual int Send(int sfd) = 0;
 
+            virtual int SendQue(int sfd) = 0;
+
             virtual int Recv(int sfd) = 0;
 
             virtual void *DequePassMsg(bool noWait = false) = 0;
@@ -83,6 +85,10 @@ namespace AZ
             virtual void *DequeOutputDataMsg(bool noWait = false) = 0;
 
             virtual void EnqueOutputDataMsg(void *data) = 0;
+
+            virtual int SendData(void *data, uint32_t len) = 0;
+
+            virtual int RecvData(void **data, uint32_t *len) = 0;
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
