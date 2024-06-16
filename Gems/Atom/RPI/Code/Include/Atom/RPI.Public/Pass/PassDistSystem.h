@@ -170,9 +170,9 @@ namespace AZ
 
             void EnqueOutputDataMsg(void *data) override;
 
-            int SendData(void *data, uint32_t len) override;
+            int SendData(void *data[], uint32_t len[], uint32_t count) override;
 
-            int RecvData(void **data, uint32_t *len) override;
+            int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count) override;
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
@@ -209,6 +209,8 @@ namespace AZ
             bool m_isServer = false;
 
             Name m_commPath;
+
+            int m_sfd = -1;
 
             WaitQueue m_msgQue;
 

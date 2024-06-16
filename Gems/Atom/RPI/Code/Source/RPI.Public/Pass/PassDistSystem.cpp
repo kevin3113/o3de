@@ -53,6 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <mutex>
 
 namespace AZ
 {
@@ -174,20 +175,20 @@ namespace AZ
                     msg = PassDistSystemInterface::Get()->DequeInputDataMsg();
                 }
                 MsgHead *msgHead = (MsgHead *)msg;
-                printf("Deque message len %u\n", msgHead->msgLen);
+                printf("SeverSendThread Deque message len %u\n", msgHead->msgLen);
                 DumpMsg("send-pass.txt", (char *)msg, msgHead->msgLen);
                 uint32_t len = (uint32_t)write(cfd, msg, msgHead->msgLen);
                 if (len <= 0)
                 {
                     free(msg);
-                    printf("send to client error!\n");
+                    printf("SeverSendThread send to client error!\n");
                     break;
                 }
                 free(msg);
-                printf("server send to client len %u\n", len);
+                printf("SeverSendThread server send to client len %u\n", len);
             }
             close(cfd);
-            printf("socket send to client disconnected!\n");
+            printf("SeverSendThread socket send to client disconnected!\n");
             *(int *)arg = 0;
             return nullptr;
         }
@@ -195,15 +196,16 @@ namespace AZ
         int RecvOneMsg(int sfd, char **msg)
         {
             MsgHead msgHead;
-            if (read(sfd, &msgHead, sizeof(MsgHead)) != sizeof(MsgHead))
+            ssize_t ret = read(sfd, &msgHead, sizeof(MsgHead));
+            if (ret != sizeof(MsgHead))
             {
-                printf("recv data error message head!\n");
+                printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
                 return -1;
             }
-            printf("recv message type %u len %u\n", msgHead.msgType, msgHead.msgLen);
+            printf("RecvOneMsg recv message type %u len %u\n", msgHead.msgType, msgHead.msgLen);
             if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
             {
-                printf("recv invalid message!\n");
+                printf("RecvOneMsg recv invalid message!\n");
                 return -1;
             }
             char *buf = (char *)malloc(msgHead.msgLen);
@@ -215,7 +217,7 @@ namespace AZ
                 if (numRead <= 0)
                 {
                     free(buf);
-                    printf("recv data error message body!\n");
+                    printf("RecvOneMsg recv data error message body!\n");
                     return -1;
                 }
                 curLen += (uint32_t)numRead;
@@ -223,7 +225,7 @@ namespace AZ
             if (curLen != msgHead.msgLen)
             {
                 free(buf);
-                printf("recv data error message len %u!\n", curLen);
+                printf("RecvOneMsg recv data error message len %u!\n", curLen);
                 return -1;
             }
             *msg = buf;
@@ -242,7 +244,7 @@ namespace AZ
                 }
             }
             close(sfd);
-            printf("socket recv from client disconnected!\n");
+            printf("SeverRecvThread socket recv from client disconnected!\n");
             *(int *)arg = 0;
             return nullptr;
         }
@@ -253,9 +255,9 @@ namespace AZ
             int fdPool[16] = {0};
             for (;;)
             {
-                printf("Waiting to accept a connection...\n");
+                printf("ServerDaemon Waiting to accept a connection...\n");
                 int cfd = accept(sfd, NULL, NULL);
-                printf("Accepted socket fd = %d\n", cfd);
+                printf("ServerDaemon Accepted socket fd = %d\n", cfd);
                 if (cfd >= 0)
                 {
                     uint32_t i = 0;
@@ -284,7 +286,7 @@ namespace AZ
                     continue;
                 }
                 sleep(1);
-                PassDistSystemInterface::Get()->Connect(sfd);
+                sfd = PassDistSystemInterface::Get()->Connect(sfd);
             }
             return nullptr;
         }
@@ -299,7 +301,7 @@ namespace AZ
                     continue;
                 }
                 sleep(1);
-                PassDistSystemInterface::Get()->Connect(sfd);
+                sfd = PassDistSystemInterface::Get()->Connect(sfd);
             }
             return nullptr;
         }
@@ -308,16 +310,16 @@ namespace AZ
         {
             struct sockaddr_un addr;
 
-            int sfd = socket(AF_UNIX, SOCK_STREAM, 0); 
-            printf("Server socket fd = %d\n", sfd);
-
-            if (sfd == -1) {
-                printf("socket error!\n");
+            m_sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+            printf("PassDistSystem::CommInit Server socket fd = %d\n", m_sfd);
+            if (m_sfd == -1) {
+                printf("PassDistSystem::CommInit socket error!\n");
                 return;
             }
 
-            if (isServer && remove(path) == -1 && errno != ENOENT) {
-                printf("remove-%s error!\n", path);
+            if (isServer && remove(path) == -1 && errno != ENOENT)
+            {
+                printf("PassDistSystem::CommInit remove %s error!\n", path);
                 return;
             }
 
@@ -328,39 +330,68 @@ namespace AZ
                 memset(&addr, 0, sizeof(struct sockaddr_un));
                 addr.sun_family = AF_UNIX;
                 strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
-                if (bind(sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1) {
-                    printf("bind error\n");
+                if (bind(m_sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1) {
+                    printf("PassDistSystem::CommInit bind error %d\n", (int)errno);
                     return;
                 }
-                if (listen(sfd, 16) == -1) {
-                    printf("listen error!\n");
+                if (listen(m_sfd, 16) == -1) {
+                    printf("PassDistSystem::CommInit listen error %d!\n", (int)errno);
                     return;
                 }
-                CreateThread(&ServerDaemon, (void *)&sfd);
-                printf("Dist Daemon thread create ok!\n");
+                CreateThread(&ServerDaemon, (void *)&m_sfd);
+                printf("PassDistSystem::CommInit Dist Daemon thread create ok!\n");
             }
             else
             {
-                CreateThread(&ClientRecvThread, (void *)&sfd);
-                CreateThread(&ClientSendThread, (void *)&sfd);
-                printf("Dist Daemon thread create ok!\n");
+                if (connect(m_sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1)
+                {
+                    printf("PassDistSystem::CommInit connect error %d!\n", (int)errno);
+                }
+                CreateThread(&ClientRecvThread, (void *)&m_sfd);
+                CreateThread(&ClientSendThread, (void *)&m_sfd);
+                printf("PassDistSystem::CommInit Dist Daemon thread create ok!\n");
             }
         }
 
         int PassDistSystem::Connect(int sfd)
         {
             struct sockaddr_un addr;
+            static std::mutex connMutex;
+            const std::lock_guard<std::mutex> lock(connMutex);
+
+            if (!Send(m_sfd))
+            {
+                printf("PassDistSystem::Connect already connected!\n");
+                return m_sfd;
+            }
 
             memset(&addr, 0, sizeof(struct sockaddr_un));
             addr.sun_family = AF_UNIX;
             strncpy(addr.sun_path, m_commPath.GetCStr(), sizeof(addr.sun_path) - 1);
 
-            if (connect(sfd, (struct sockaddr *) &addr,
-                        sizeof(struct sockaddr_un)) == -1) {
-                printf("connect error!\n");
+            if (!connect(m_sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)))
+            {
+                printf("PassDistSystem::Connect connect success try 1!\n");
+                return m_sfd;
+            }
+
+            printf("PassDistSystem::Connect connect error %d try 1!\n", (int)errno);
+
+            close(m_sfd);
+            m_sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+            printf("PassDistSystem::Connect socket fd = %d\n", m_sfd);
+            if (m_sfd == -1) {
+                printf("PassDistSystem::Connect socket error %d!\n", (int)errno);
                 return -1;
             }
-            return 0;
+
+            if (connect(m_sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1)
+            {
+                printf("PassDistSystem::Connect connect error %d try 2!\n", (int)errno);
+                return -1;
+            }
+            printf("PassDistSystem::Connect connect successfully!\n");
+            return m_sfd;
         }
 
         int PassDistSystem::Send(int sfd)
@@ -374,10 +405,10 @@ namespace AZ
             debugInfo->infoLen = strnlen(msg, 256) + 1 + sizeof(MsgDebugInfo);
             strncpy(buf + sizeof(MsgHead) + sizeof(MsgDebugInfo), msg, 256 - sizeof(MsgHead) - sizeof(MsgDebugInfo));
             msgHead->msgLen = debugInfo->infoLen + sizeof(MsgHead);
-            printf("reply msg type %u, len %u\n", msgHead->msgType, msgHead->msgLen);
+            printf("PassDistSystem::Send reply msg type %u, len %u\n", msgHead->msgType, msgHead->msgLen);
             if (write(sfd, buf, msgHead->msgLen) != msgHead->msgLen)
             {
-                printf("partial/failed write error!\n");
+                printf("PassDistSystem::Send partial/failed write error!\n");
                 return -1;
             }
             return 0;
@@ -388,7 +419,7 @@ namespace AZ
             char *msg;
             if (m_isServer)
             {
-                printf("error server use Send method!\n");
+                printf("PassDistSystem::SendQue error server use Send method!\n");
                 return -1;
             }
             else
@@ -398,11 +429,11 @@ namespace AZ
             MsgHead *msgHead = (MsgHead *)msg;
             if (write(sfd, msg, msgHead->msgLen) != msgHead->msgLen)
             {
-                printf("partial/failed write error!\n");
+                printf("PassDistSystem::SendQue partial/failed write error!\n");
                 free(msg);
                 return -1;
             }
-            printf("PassDistSystem::SendQue\n");
+            printf("PassDistSystem::SendQue success!\n");
             free(msg);
             return 0;
         }
@@ -420,7 +451,7 @@ namespace AZ
             if (msgHead->msgType == (uint32_t)DistMsgType::PassGraph)
             {
                 MsgPassGraph *passMsg = (MsgPassGraph *)(msg + sizeof(MsgHead));
-                printf("recv pass graph len %u\n", passMsg->passLen);
+                printf("PassDistSystem::Recv recv pass graph len %u\n", passMsg->passLen);
                 EnquePassMsg((void *)msg);
                 return 0;
             }
@@ -428,7 +459,7 @@ namespace AZ
             if (msgHead->msgType == (uint32_t)DistMsgType::PassData)
             {
                 MsgPassData *passData = (MsgPassData *)(msg + sizeof(MsgHead));
-                printf("recv pass data len %u, node %u\n", passData->dataLen, passData->nodeId);
+                printf("PassDistSystem::Recv recv pass data len %u, node %u\n", passData->dataLen, passData->nodeId);
                 if (m_isServer)
                 {
                     EnqueOutputDataMsg((void *)msg);
@@ -443,12 +474,12 @@ namespace AZ
             if (msgHead->msgType == (uint32_t)DistMsgType::Debug)
             {
                 MsgDebugInfo *debugInfo = (MsgDebugInfo *)(msg + sizeof(MsgHead));
-                printf("recv debug info len %u, node %u, info: %s\n", debugInfo->infoLen,
+                printf("PassDistSystem::Recv recv debug info len %u, node %u, info: %s\n", debugInfo->infoLen,
                     debugInfo->nodeId, msg + sizeof(MsgHead) + sizeof(MsgDebugInfo));
             }
             else
             {
-                printf("recv invalid message type %u\n", msgHead->msgType);
+                printf("PassDistSystem::Recv recv invalid message type %u\n", msgHead->msgType);
             }
 
             free(msg);
@@ -500,17 +531,33 @@ namespace AZ
             m_dataOutputQue.V(data);
         }
 
-        int PassDistSystem::SendData(void *data, uint32_t len)
+        int PassDistSystem::SendData(void *data[], uint32_t len[], uint32_t count)
         {
-            char *msg = (char *)malloc(sizeof(MsgHead) + sizeof(MsgPassData) + len);
+            uint32_t totalLen = sizeof(MsgHead);
+            for (uint32_t msgCnt = 0; msgCnt < count; msgCnt++)
+            {
+                totalLen += len[msgCnt] + sizeof(MsgPassData);
+            }
+            char *msg = (char *)malloc(totalLen);
             MsgHead *msgHead = (MsgHead *)msg;
             msgHead->msgType = (uint32_t)DistMsgType::PassData;
-            msgHead->msgLen = sizeof(MsgHead) + sizeof(MsgPassData) + len;
-            MsgPassData *passData = (MsgPassData *)(msg + sizeof(MsgHead));
-            passData->dataLen = sizeof(MsgPassData) + len;
-            passData->nodeId = 0;
-            memcpy(msg + sizeof(MsgHead) + sizeof(MsgPassData), data, len);
-            free(data);
+            msgHead->msgLen = totalLen;
+            uint32_t curPos = sizeof(MsgHead);
+            for (uint32_t msgCnt = 0; msgCnt < count; msgCnt++)
+            {
+                MsgPassData *passData = (MsgPassData *)(msg + curPos);
+                passData->dataLen = len[msgCnt] + sizeof(MsgPassData);
+                passData->nodeId = 0;
+                curPos += sizeof(MsgPassData);
+                memcpy(msg + curPos, data[msgCnt], len[msgCnt]);
+                free(data[msgCnt]);
+                curPos += len[msgCnt];
+                printf("PassDistSystem::SendData pack data %p len %u\n", data[msgCnt], len[msgCnt]);
+            }
+            if (curPos != totalLen)
+            {
+                printf("PassDistSystem::SendData error curPos %u != total len %u\n", curPos, totalLen);
+            }
             if (m_isServer)
             {
                 EnqueInputDataMsg((void *)msg);
@@ -520,13 +567,14 @@ namespace AZ
                 EnqueOutputDataMsg((void *)msg);
             }
             printf("PassDistSystem::SendData cur is server %d put msg len %u\n", 
-                (int)m_isServer, len);
+                (int)m_isServer, totalLen);
             return 0;
         }
 
-        int PassDistSystem::RecvData(void **data, uint32_t *len)
+        int PassDistSystem::RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count)
         {
             char *msg;
+            printf("PassDistSystem::RecvData wait for data count %u\n", size);
             if (m_isServer)
             {
                 msg = (char *)DequeOutputDataMsg();
@@ -535,13 +583,28 @@ namespace AZ
             {
                 msg = (char *)DequeInputDataMsg();
             }
-            MsgPassData *passData = (MsgPassData *)(msg + sizeof(MsgHead));
-            *len = passData->dataLen - sizeof(MsgPassData);
-            *data = malloc(*len);
-            memcpy(*data, msg + sizeof(MsgHead) + sizeof(MsgPassData), *len);
+            MsgHead *msgHead = (MsgHead *)msg;
+            uint32_t curPos = sizeof(MsgHead);
+            uint32_t msgCnt = 0;
+            while (curPos < msgHead->msgLen && msgCnt < size)
+            {
+                MsgPassData *passData = (MsgPassData *)(msg + curPos);
+                curPos += sizeof(MsgPassData);
+                len[msgCnt] = passData->dataLen - sizeof(MsgPassData);
+                data[msgCnt] = malloc(len[msgCnt]);
+                memcpy(data[msgCnt], msg + curPos, len[msgCnt]);
+                printf("PassDistSystem::RecvData cur is server %d get msg len %u\n",
+                    (int)m_isServer, *len);
+                curPos += len[msgCnt];
+            }
+            *count = msgCnt;
+            printf("PassDistSystem::RecvData input size %u total recv data count %u\n", size, msgCnt);
+            if (curPos != msgHead->msgLen)
+            {
+                printf("PassDistSystem::RecvData error cur msg pos %u != msg len %u\n",
+                    curPos, msgHead->msgLen);
+            }
             free(msg);
-            printf("PassDistSystem::RecvData cur is server %d get msg len %u\n", 
-                (int)m_isServer, *len);
             return 0;
         }
 

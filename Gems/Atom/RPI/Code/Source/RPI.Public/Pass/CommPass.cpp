@@ -120,11 +120,16 @@ namespace AZ
             if (m_data.m_recvData)
             {
                 // test
-                void *buf = nullptr;
-                uint32_t len = 0;
-                int ret = PassDistSystemInterface::Get()->RecvData(&buf, &len);
-                printf("CommPass recv data message %p len %u ret %d\n", buf, len, ret);
-                free(buf);
+                void *buf[8];
+                uint32_t len[8];
+                uint32_t count = 0;
+                int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count);
+                printf("CommPass recv data message count %u ret %d\n", count, ret);
+                for (int i = 0; i < count && i < 8; i++)
+                {
+                    printf("CommPass recv data message %p len %u\n", buf[i], len[i]);
+                    free(buf[i]);
+                }
             }
 
             // build commnad
@@ -137,9 +142,13 @@ namespace AZ
             if (m_data.m_sendData)
             {
                 // test
+                void *data[1];
+                uint32_t len[1];
                 void *buf = (char *)malloc(1024);
                 memset(buf, 0x5a, 1024);
-                int ret = PassDistSystemInterface::Get()->SendData(buf, 1024);
+                data[0] = buf;
+                len[0] = 1024;
+                int ret = PassDistSystemInterface::Get()->SendData(data, len, 1);
                 printf("CommPass send data message ret %d\n", ret);
             }
         }

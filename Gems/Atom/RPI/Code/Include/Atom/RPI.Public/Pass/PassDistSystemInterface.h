@@ -86,9 +86,9 @@ namespace AZ
 
             virtual void EnqueOutputDataMsg(void *data) = 0;
 
-            virtual int SendData(void *data, uint32_t len) = 0;
+            virtual int SendData(void *data[], uint32_t len[], uint32_t count) = 0;
 
-            virtual int RecvData(void **data, uint32_t *len) = 0;
+            virtual int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count) = 0;
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
