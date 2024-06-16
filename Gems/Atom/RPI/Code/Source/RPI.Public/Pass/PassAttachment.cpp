@@ -218,28 +218,28 @@ namespace AZ
             if (m_updatingSize)
             {
                 AZ_Assert(false, "PassAttachment::UpdateImageSize: Error: Circular reference detected");
-                printf("atta id [%s] size is updating in recurse\n", GetAttachmentId().GetCStr());
+                //printf("atta id [%s] size is updating in recurse\n", GetAttachmentId().GetCStr());
                 return;
             }
             m_updatingSize = true;
             if (m_getSizeFromPipeline && m_renderPipelineSource)
             {
-                printf("atta id [%s] size from pipeline seting\n", GetAttachmentId().GetCStr());
+                //printf("atta id [%s] size from pipeline seting\n", GetAttachmentId().GetCStr());
                 m_descriptor.m_image.m_size = m_renderPipelineSource->GetRenderSettings().m_size;
             }
             else if (m_sizeSource)
             {
                 auto& refAttachment = m_sizeSource->GetAttachment();
-                printf("atta id [%s] size from ref %p\n", GetAttachmentId().GetCStr(), refAttachment.get());
+                //printf("atta id [%s] size from ref %p\n", GetAttachmentId().GetCStr(), refAttachment.get());
                 if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
                 {
                     refAttachment->UpdateImageSize();
                     RHI::Size sourceSize = refAttachment->m_descriptor.m_image.m_size;
                     m_descriptor.m_image.m_size = m_sizeMultipliers.ApplyModifiers(sourceSize);
-                    printf("ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
-                        refAttachment->m_descriptor.m_image.m_size.m_width,
-                        refAttachment->m_descriptor.m_image.m_size.m_height,
-                        refAttachment->m_descriptor.m_image.m_size.m_depth);
+                    //printf("ref to [%s] size 0x %x_%x_%x\n", refAttachment->GetAttachmentId().GetCStr(),
+                    //    refAttachment->m_descriptor.m_image.m_size.m_width,
+                    //    refAttachment->m_descriptor.m_image.m_size.m_height,
+                    //    refAttachment->m_descriptor.m_image.m_size.m_depth);
                 }
             }
             m_updatingSize = false;
@@ -392,10 +392,10 @@ namespace AZ
         void PassAttachmentBinding::UpdateConnection(bool useFallback)
         {
             Ptr<PassAttachment> targetAttachment = nullptr;
-
+/*
             printf("UpdateConnection useFallback %d m_fallbackBinding %p m_slotType %d m_connectedBinding %p orig att %p\n",
                 (int)useFallback, m_fallbackBinding, (int)m_slotType, m_connectedBinding, m_originalAttachment.get());
-
+*/
             // Use the fallback binding if:
             // - the calling pass specifies to use it
             // - fallback binding is setup
@@ -416,12 +416,14 @@ namespace AZ
             if (targetAttachment == nullptr ||
                 (targetAttachment == m_attachment && m_attachment->GetAttachmentId() == m_unifiedScopeDesc.m_attachmentId))
             {
+/*
                 if (targetAttachment)
                     printf("UpdateConnection targetAttachment self [%p] id %s target [%p] unifid %s\n",
                         m_attachment.get(), m_attachment->GetAttachmentId().GetCStr(), targetAttachment.get(),
                         m_unifiedScopeDesc.m_attachmentId.GetCStr());
                 else
                     printf("UpdateConnection targetAttachment is nullptr\n");
+*/
                 return;
             }
 

@@ -91,7 +91,7 @@ namespace AZ
         {
             if (!m_data.m_submit)
             {
-                printf("CommPass::CompileResources no submit no need compile!\n");
+                printf("CommPass::CompileResources %s no submit no need compile!\n", GetName().GetCStr());
                 return;
             }
             RHI::CopyItemType copyType = GetCopyItemType();
@@ -124,7 +124,7 @@ namespace AZ
                 uint32_t len[8];
                 uint32_t count = 0;
                 int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count);
-                printf("CommPass recv data message count %u ret %d\n", count, ret);
+                printf("CommPass %s recv data message count %u ret %d\n", GetName().GetCStr(), count, ret);
                 for (int i = 0; i < count && i < 8; i++)
                 {
                     printf("CommPass recv data message %p len %u\n", buf[i], len[i]);
@@ -135,6 +135,7 @@ namespace AZ
             // build commnad
             if (m_data.m_submit && m_copyItem.m_type != RHI::CopyItemType::Invalid)
             {
+                printf("CommPass::BuildCommandListInternal %s submit command\n", GetName().GetCStr());
                 context.GetCommandList()->Submit(m_copyItem);
             }
 
@@ -149,7 +150,7 @@ namespace AZ
                 data[0] = buf;
                 len[0] = 1024;
                 int ret = PassDistSystemInterface::Get()->SendData(data, len, 1);
-                printf("CommPass send data message ret %d\n", ret);
+                printf("CommPass %s send data message ret %d\n", GetName().GetCStr(), ret);
             }
         }
 
@@ -192,6 +193,9 @@ namespace AZ
             //copyDesc.m_destinationOrigin = m_data.m_imageDestinationOrigin;
             //copyDesc.m_destinationSubresource = m_data.m_imageDestinationSubresource;
 
+            printf("CommPass::CopyImage %s src %s to %s\n", GetName().GetCStr(),
+                copySource.GetAttachment()->GetAttachmentId().GetCStr(),
+                copyDest.GetAttachment()->GetAttachmentId().GetCStr());
             m_copyItem = copyDesc;
         }
 
@@ -238,8 +242,8 @@ namespace AZ
                 copyDest.GetAttachment()->GetAttachmentId().GetCStr(), copyDesc.m_destinationBuffer);
             //print_stack();
             copyDesc.m_destinationOffset = 0;
-            copyDesc.m_destinationBytesPerRow = m_data.m_bufferDestinationBytesPerRow;
-            copyDesc.m_destinationBytesPerImage = 0;
+            copyDesc.m_destinationBytesPerRow = sourceImage->GetDescriptor().m_size.m_width
+                * RHI::GetFormatSize(sourceImage->GetDescriptor().m_format);
             copyDesc.m_destinationFormat = sourceImage->GetDescriptor().m_format;
 
             m_copyItem = copyDesc;

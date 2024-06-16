@@ -29,9 +29,6 @@ namespace AZ
 
             static void Reflect(ReflectContext* context);
 
-            // Buffer Destination
-            uint32_t m_bufferDestinationBytesPerRow = 0;
-
             // Whether the pass should use the copy queue.
             bool m_useCopyQueue = false;
 

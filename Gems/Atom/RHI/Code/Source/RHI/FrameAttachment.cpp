@@ -27,7 +27,7 @@ namespace AZ::RHI
     {
         if (m_resource)
         {
-            printf("ClearResource to [%s] frame atta addr %p\n", m_attachmentId.GetCStr(), this);
+            //printf("ClearResource to [%s] frame atta addr %p\n", m_attachmentId.GetCStr(), this);
             //print_stack();
             m_resource->SetFrameAttachment(nullptr);
         }
@@ -57,7 +57,7 @@ namespace AZ::RHI
     {
         AZ_Assert(!m_resource, "A resource has already been assigned to this frame attachment.");
         AZ_Assert(resource, "Assigning a null resource to attachment %s.", m_attachmentId.GetCStr());
-        printf("SetResource to [%s] frame atta addr %p\n", m_attachmentId.GetCStr(), this);
+        //printf("SetResource to [%s] frame atta addr %p\n", m_attachmentId.GetCStr(), this);
         //print_stack();
         m_resource = AZStd::move(resource);
         m_resource->SetFrameAttachment(this);
