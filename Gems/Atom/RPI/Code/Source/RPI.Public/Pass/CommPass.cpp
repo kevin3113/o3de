@@ -47,10 +47,10 @@ namespace AZ
             }
         }
 
-        RHI::CopyItemType CommPass::GetCopyItemType()
+        RHI::CopyItemType CommPass::GetCopyItemType(uint32_t index)
         {
-            RHI::AttachmentType inputType = GetInputBinding(0).GetAttachment()->GetAttachmentType();
-            RHI::AttachmentType outputType = GetOutputBinding(0).GetAttachment()->GetAttachmentType();
+            RHI::AttachmentType inputType = GetInputBinding(index).GetAttachment()->GetAttachmentType();
+            RHI::AttachmentType outputType = GetOutputBinding(index).GetAttachment()->GetAttachmentType();
 
             RHI::CopyItemType copyType = RHI::CopyItemType::Invalid;
 
@@ -80,43 +80,50 @@ namespace AZ
         {
             if (m_data.m_cloneInput)
             {
-                const Ptr<PassAttachment>& source = GetInputBinding(0).GetAttachment();
-                Ptr<PassAttachment> dest = source->Clone();
-
-                // Set bind flags to CopyWrite. Other bind flags will be auto-inferred by pass system
-                if (dest->m_descriptor.m_type == RHI::AttachmentType::Image)
+                for (uint32_t index = 0; index < GetInputCount(); index++)
                 {
-                    dest->m_descriptor.m_image.m_bindFlags = RHI::ImageBindFlags::CopyWrite;
-                }
-                else if (dest->m_descriptor.m_type == RHI::AttachmentType::Buffer)
-                {
-                    dest->m_descriptor.m_buffer.m_bindFlags = RHI::BufferBindFlags::CopyWrite;
-                }
+                    const Ptr<PassAttachment>& source = GetInputBinding(index).GetAttachment();
+                    Ptr<PassAttachment> dest = source->Clone();
 
-                // Set path name for the new attachment and add it to our attachment list
-                dest->ComputePathName(GetPathName());
-                m_ownedAttachments.push_back(dest);
+                    // Set bind flags to CopyWrite. Other bind flags will be auto-inferred by pass system
+                    if (dest->m_descriptor.m_type == RHI::AttachmentType::Image)
+                    {
+                        dest->m_descriptor.m_image.m_bindFlags = RHI::ImageBindFlags::CopyWrite;
+                    }
+                    else if (dest->m_descriptor.m_type == RHI::AttachmentType::Buffer)
+                    {
+                        dest->m_descriptor.m_buffer.m_bindFlags = RHI::BufferBindFlags::CopyWrite;
+                    }
 
-                // Set the output binding to the new attachment
-                GetOutputBinding(0).SetAttachment(dest);
+                    // Set path name for the new attachment and add it to our attachment list
+                    dest->ComputePathName(GetPathName());
+                    m_ownedAttachments.push_back(dest);
+
+                    // Set the output binding to the new attachment
+                    GetOutputBinding(index).SetAttachment(dest);
+                }
             }
-            const Ptr<PassAttachment>& inputAtt = GetInputBinding(0).GetAttachment();
-            if (inputAtt->m_descriptor.m_type == RHI::AttachmentType::Image && GetInputOutputCount())
+            for (uint32_t index = 0; index < GetInputCount(); index++)
             {
-                PassBufferAttachmentDesc desc;
-                desc.m_name = "CommTempBuffer";
-                desc.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format) *
-                    inputAtt->m_descriptor.m_image.m_size.m_width * inputAtt->m_descriptor.m_image.m_size.m_height * inputAtt->m_descriptor.m_image.m_size.m_depth;
-                printf("CommPass::BuildInternal %s Input Image size is %d %d %d, format %d size %d buf size %d\n", GetName().GetCStr(),
-                    (int)inputAtt->m_descriptor.m_image.m_size.m_width, (int)inputAtt->m_descriptor.m_image.m_size.m_height,
-                    (int)inputAtt->m_descriptor.m_image.m_size.m_depth,(int)inputAtt->m_descriptor.m_image.m_format,
-                    (int)RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format), (int)desc.m_bufferDescriptor.m_byteCount);
-                desc.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
-                Ptr<PassAttachment> tmpBuf = aznew PassAttachment(desc);
-                tmpBuf->ComputePathName(GetPathName());
-                tmpBuf->m_ownerPass = this;
-                m_ownedAttachments.push_back(tmpBuf);
-                GetInputOutputBinding(0).SetAttachment(tmpBuf);
+                const Ptr<PassAttachment>& inputAtt = GetInputBinding(index).GetAttachment();
+                if (inputAtt->m_descriptor.m_type == RHI::AttachmentType::Image && GetInputOutputCount())
+                {
+                    PassBufferAttachmentDesc desc;
+                    std::string bufName = std::string("_CommTempBuffer_") + (char)(0x41 + index);
+                    desc.m_name = Name(bufName.c_str());
+                    desc.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format) *
+                        inputAtt->m_descriptor.m_image.m_size.m_width * inputAtt->m_descriptor.m_image.m_size.m_height * inputAtt->m_descriptor.m_image.m_size.m_depth;
+                    printf("CommPass::BuildInternal %s Input Image size is %d %d %d, format %d size %d buf size %d\n", GetName().GetCStr(),
+                        (int)inputAtt->m_descriptor.m_image.m_size.m_width, (int)inputAtt->m_descriptor.m_image.m_size.m_height,
+                        (int)inputAtt->m_descriptor.m_image.m_size.m_depth,(int)inputAtt->m_descriptor.m_image.m_format,
+                        (int)RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format), (int)desc.m_bufferDescriptor.m_byteCount);
+                    desc.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
+                    Ptr<PassAttachment> tmpBuf = aznew PassAttachment(desc);
+                    tmpBuf->ComputePathName(GetPathName());
+                    tmpBuf->m_ownerPass = this;
+                    m_ownedAttachments.push_back(tmpBuf);
+                    GetInputOutputBinding(index).SetAttachment(tmpBuf);
+                }
             }
         }
 
@@ -134,23 +141,26 @@ namespace AZ
                 printf("CommPass::CompileResources %s no submit no need compile!\n", GetName().GetCStr());
                 return;
             }
-            RHI::CopyItemType copyType = GetCopyItemType();
-            switch (copyType)
+            for (uint32_t index = 0; index < GetInputCount(); index++)
             {
-            case AZ::RHI::CopyItemType::Buffer:
-                CopyBuffer(context);
-                break;
-            case AZ::RHI::CopyItemType::Image:
-                CopyImage(context);
-                break;
-            case AZ::RHI::CopyItemType::BufferToImage:
-                CopyBufferToImage(context);
-                break;
-            case AZ::RHI::CopyItemType::ImageToBuffer:
-                CopyImageToBuffer(context);
-                break;
-            default:
-                break;
+                RHI::CopyItemType copyType = GetCopyItemType(index);
+                switch (copyType)
+                {
+                case AZ::RHI::CopyItemType::Buffer:
+                    CopyBuffer(context, index);
+                    break;
+                case AZ::RHI::CopyItemType::Image:
+                    CopyImage(context, index);
+                    break;
+                case AZ::RHI::CopyItemType::BufferToImage:
+                    CopyBufferToImage(context, index);
+                    break;
+                case AZ::RHI::CopyItemType::ImageToBuffer:
+                    CopyImageToBuffer(context, index);
+                    break;
+                default:
+                    break;
+                }
             }
         }
 
@@ -173,10 +183,17 @@ namespace AZ
             }
 
             // build commnad
-            if (m_data.m_submit && m_copyItem.m_type != RHI::CopyItemType::Invalid)
+            if (m_data.m_submit)
             {
-                printf("CommPass::BuildCommandListInternal %s submit command\n", GetName().GetCStr());
-                context.GetCommandList()->Submit(m_copyItem);
+                for (auto& copyItem : m_copyItems)
+                {
+                    if (copyItem.m_type != RHI::CopyItemType::Invalid)
+                    {
+                        printf("CommPass::BuildCommandListInternal %s submit command\n", GetName().GetCStr());
+                        context.GetCommandList()->Submit(copyItem);
+                    }
+                }
+                m_copyItems.clear();
             }
 
             // send data to out
@@ -196,31 +213,32 @@ namespace AZ
 
         // --- Copy setup functions ---
 
-        void CommPass::CopyBuffer(const RHI::FrameGraphCompileContext& context)
+        void CommPass::CopyBuffer(const RHI::FrameGraphCompileContext& context, uint32_t index)
         {
             RHI::CopyBufferDescriptor copyDesc;
 
             // Source Buffer
-            PassAttachmentBinding& copySource = GetInputBinding(0);
+            PassAttachmentBinding& copySource = GetInputBinding(index);
             const AZ::RHI::Buffer* sourceBuffer = context.GetBuffer(copySource.GetAttachment()->GetAttachmentId());
             copyDesc.m_sourceBuffer = sourceBuffer;
             copyDesc.m_size = static_cast<uint32_t>(sourceBuffer->GetDescriptor().m_byteCount);
             //copyDesc.m_sourceOffset = m_data.m_bufferSourceOffset;
 
             // Destination Buffer
-            PassAttachmentBinding& copyDest = GetOutputBinding(0);
+            PassAttachmentBinding& copyDest = GetOutputBinding(index);
             copyDesc.m_destinationBuffer = context.GetBuffer(copyDest.GetAttachment()->GetAttachmentId());
             //copyDesc.m_destinationOffset = m_data.m_bufferDestinationOffset;
 
-            m_copyItem = copyDesc;
+            RHI::CopyItem copyItem = copyDesc;
+            m_copyItems.emplace_back(copyItem);
         }
 
-        void CommPass::CopyImage(const RHI::FrameGraphCompileContext& context)
+        void CommPass::CopyImage(const RHI::FrameGraphCompileContext& context, uint32_t index)
         {
             RHI::CopyImageDescriptor copyDesc;
 
             // Source Image
-            PassAttachmentBinding& copySource = GetInputBinding(0);
+            PassAttachmentBinding& copySource = GetInputBinding(index);
             const AZ::RHI::Image* sourceImage = context.GetImage(copySource.GetAttachment()->GetAttachmentId());
             copyDesc.m_sourceImage = sourceImage;
             copyDesc.m_sourceSize = sourceImage->GetDescriptor().m_size;
@@ -228,30 +246,33 @@ namespace AZ
             //copyDesc.m_sourceSubresource = m_data.m_imageSourceSubresource;
 
             // Destination Image
-            PassAttachmentBinding& copyDest = GetOutputBinding(0);
+            PassAttachmentBinding& copyDest = GetOutputBinding(index);
             copyDesc.m_destinationImage = context.GetImage(copyDest.GetAttachment()->GetAttachmentId());
             //copyDesc.m_destinationOrigin = m_data.m_imageDestinationOrigin;
             //copyDesc.m_destinationSubresource = m_data.m_imageDestinationSubresource;
 
-            printf("CommPass::CopyImage %s src %s to %s\n", GetName().GetCStr(),
-                copySource.GetAttachment()->GetAttachmentId().GetCStr(),
-                copyDest.GetAttachment()->GetAttachmentId().GetCStr());
-            m_copyItem = copyDesc;
-
             if (GetInputOutputCount())
             {
-                PassAttachmentBinding& tmpBind = GetInputOutputBinding(0);
+                PassAttachmentBinding& tmpBind = GetInputOutputBinding(index);
                 const RHI::Buffer *tmpBuf = context.GetBuffer(tmpBind.GetAttachment()->GetAttachmentId());
                 printf("CommPass BuildCommandListInternal tmp buf %p\n", tmpBuf);
             }
+
+            printf("CommPass::CopyImage %s src %s to %s\n", GetName().GetCStr(),
+                copySource.GetAttachment()->GetAttachmentId().GetCStr(),
+                copyDest.GetAttachment()->GetAttachmentId().GetCStr());
+
+            RHI::CopyItem copyItem = copyDesc;
+            m_copyItems.emplace_back(copyItem);
+
         }
 
-        void CommPass::CopyBufferToImage(const RHI::FrameGraphCompileContext& context)
+        void CommPass::CopyBufferToImage(const RHI::FrameGraphCompileContext& context, uint32_t index)
         {
             RHI::CopyBufferToImageDescriptor copyDesc;
 
             // Source Buffer
-            PassAttachmentBinding& copySource = GetInputBinding(0);
+            PassAttachmentBinding& copySource = GetInputBinding(index);
             const AZ::RHI::Buffer* sourceBuffer = context.GetBuffer(copySource.GetAttachment()->GetAttachmentId());
             copyDesc.m_sourceBuffer = sourceBuffer;
             //copyDesc.m_sourceOffset = m_data.m_bufferSourceOffset;
@@ -259,21 +280,22 @@ namespace AZ
             //copyDesc.m_sourceBytesPerImage = m_data.m_bufferSourceBytesPerImage;
 
             // Destination Image
-            PassAttachmentBinding& copyDest = GetOutputBinding(0);
+            PassAttachmentBinding& copyDest = GetOutputBinding(index);
             copyDesc.m_destinationImage = context.GetImage(copyDest.GetAttachment()->GetAttachmentId());
             //copyDesc.m_destinationOrigin = m_data.m_imageDestinationOrigin;
             //copyDesc.m_destinationSubresource = m_data.m_imageDestinationSubresource;
             copyDesc.m_sourceSize = copyDesc.m_destinationImage->GetDescriptor().m_size;
 
-            m_copyItem = copyDesc;
+            RHI::CopyItem copyItem = copyDesc;
+            m_copyItems.emplace_back(copyItem);
         }
 
-        void CommPass::CopyImageToBuffer(const RHI::FrameGraphCompileContext& context)
+        void CommPass::CopyImageToBuffer(const RHI::FrameGraphCompileContext& context, uint32_t index)
         {
             RHI::CopyImageToBufferDescriptor copyDesc;
 
             // Source Image
-            PassAttachmentBinding& copySource = GetInputBinding(0);
+            PassAttachmentBinding& copySource = GetInputBinding(index);
             const AZ::RHI::Image* sourceImage = context.GetImage(copySource.GetAttachment()->GetAttachmentId());
             copyDesc.m_sourceImage = sourceImage;
             copyDesc.m_sourceSize = sourceImage->GetDescriptor().m_size;
@@ -281,7 +303,7 @@ namespace AZ
             //copyDesc.m_sourceSubresource = m_data.m_imageSourceSubresource;
 
             // Destination Buffer
-            PassAttachmentBinding& copyDest = GetOutputBinding(0);
+            PassAttachmentBinding& copyDest = GetOutputBinding(index);
             copyDesc.m_destinationBuffer = context.GetBuffer(copyDest.GetAttachment()->GetAttachmentId());
             printf("CopyImageToBuffer pass [%s] image format %d/%d buf atta id [%s] pointer %p\n",
                 GetName().GetCStr(), (int)sourceImage->GetDescriptor().m_format,
@@ -293,7 +315,8 @@ namespace AZ
                 * RHI::GetFormatSize(sourceImage->GetDescriptor().m_format);
             copyDesc.m_destinationFormat = sourceImage->GetDescriptor().m_format;
 
-            m_copyItem = copyDesc;
+            RHI::CopyItem copyItem = copyDesc;
+            m_copyItems.emplace_back(copyItem);
         }
 
     }   // namespace RPI

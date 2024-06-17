@@ -37,10 +37,10 @@ namespace AZ
             explicit CommPass(const PassDescriptor& descriptor);
 
             // Sets up the copy item to perform an image to image copy
-            void CopyBuffer(const RHI::FrameGraphCompileContext& context);
-            void CopyImage(const RHI::FrameGraphCompileContext& context);
-            void CopyBufferToImage(const RHI::FrameGraphCompileContext& context);
-            void CopyImageToBuffer(const RHI::FrameGraphCompileContext& context);
+            void CopyBuffer(const RHI::FrameGraphCompileContext& context, uint32_t index);
+            void CopyImage(const RHI::FrameGraphCompileContext& context, uint32_t index);
+            void CopyBufferToImage(const RHI::FrameGraphCompileContext& context, uint32_t index);
+            void CopyImageToBuffer(const RHI::FrameGraphCompileContext& context, uint32_t index);
 
             // Pass behavior overrides
             void BuildInternal() override;
@@ -51,10 +51,10 @@ namespace AZ
             void BuildCommandListInternal(const RHI::FrameGraphExecuteContext& context) override;
 
             // Retrieves the copy item type based on the input and output attachment type
-            RHI::CopyItemType GetCopyItemType();
+            RHI::CopyItemType GetCopyItemType(uint32_t index);
 
             // The copy item submitted to the command list
-            RHI::CopyItem m_copyItem;
+            AZStd::vector<RHI::CopyItem> m_copyItems;
 
             // Potential data provided by the PassRequest
             CommPassData m_data;

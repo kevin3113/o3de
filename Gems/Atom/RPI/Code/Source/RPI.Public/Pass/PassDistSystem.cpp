@@ -732,35 +732,49 @@ namespace AZ
             return add;
         }
 
-        AZStd::shared_ptr<PassTemplate> PassDistSystem::CreateCommPassTemplate(Name tempName)
+        void PassDistSystem::AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, std::string suffix)
         {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = tempName;
-            passTemplate->m_passClass = "CommPass";
-
             PassSlot slot;
-            slot.m_name = "Input";
+            slot.m_name = std::string(std::string("Input") + suffix).c_str();
             slot.m_slotType = PassSlotType::Input;
             slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
             slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Load;
             passTemplate->m_slots.emplace_back(slot);
 
-            slot.m_name = "Output";
+            slot.m_name = std::string(std::string("Output") + suffix).c_str();
             slot.m_slotType = PassSlotType::Output;
             slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
             slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
             passTemplate->m_slots.emplace_back(slot);
 
-            slot.m_name = "InputOutput";
+            slot.m_name = std::string(std::string("InputOutput") + suffix).c_str();
             slot.m_slotType = PassSlotType::InputOutput;
             passTemplate->m_slots.emplace_back(slot);
+        }
+
+        AZStd::shared_ptr<PassTemplate> PassDistSystem::CreateCommPassTemplate(Name tempName, uint32_t count)
+        {
+            AZStd::shared_ptr<PassTemplate> passTemplate;
+            passTemplate = AZStd::make_shared<PassTemplate>();
+            passTemplate->m_name = tempName;
+            passTemplate->m_passClass = "CommPass";
+            if (count == 1)
+            {
+                AddCommPassSlot(passTemplate, "");
+            }
+            else
+            {
+                for (uint32_t index = 0; index < count; index++)
+                {
+                    AddCommPassSlot(passTemplate, std::to_string(index));
+                }
+            }
             return passTemplate;
         }
 
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
         {
-            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassAfterTemplate"));
+            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassAfterTemplate"), 1);
 
             PassConnection conn;
             conn.m_localSlot = "Input";
