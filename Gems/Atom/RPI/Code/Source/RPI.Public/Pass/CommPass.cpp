@@ -100,6 +100,24 @@ namespace AZ
                 // Set the output binding to the new attachment
                 GetOutputBinding(0).SetAttachment(dest);
             }
+            const Ptr<PassAttachment>& inputAtt = GetInputBinding(0).GetAttachment();
+            if (inputAtt->m_descriptor.m_type == RHI::AttachmentType::Image && GetInputOutputCount())
+            {
+                PassBufferAttachmentDesc desc;
+                desc.m_name = "CommTempBuffer";
+                desc.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format) *
+                    inputAtt->m_descriptor.m_image.m_size.m_width * inputAtt->m_descriptor.m_image.m_size.m_height * inputAtt->m_descriptor.m_image.m_size.m_depth;
+                printf("CommPass::BuildInternal %s Input Image size is %d %d %d, format %d size %d buf size %d\n", GetName().GetCStr(),
+                    (int)inputAtt->m_descriptor.m_image.m_size.m_width, (int)inputAtt->m_descriptor.m_image.m_size.m_height,
+                    (int)inputAtt->m_descriptor.m_image.m_size.m_depth,(int)inputAtt->m_descriptor.m_image.m_format,
+                    (int)RHI::GetFormatSize(inputAtt->m_descriptor.m_image.m_format), (int)desc.m_bufferDescriptor.m_byteCount);
+                desc.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
+                Ptr<PassAttachment> tmpBuf = aznew PassAttachment(desc);
+                tmpBuf->ComputePathName(GetPathName());
+                tmpBuf->m_ownerPass = this;
+                m_ownedAttachments.push_back(tmpBuf);
+                GetInputOutputBinding(0).SetAttachment(tmpBuf);
+            }
         }
 
         // --- Scope producer functions ---
@@ -219,6 +237,13 @@ namespace AZ
                 copySource.GetAttachment()->GetAttachmentId().GetCStr(),
                 copyDest.GetAttachment()->GetAttachmentId().GetCStr());
             m_copyItem = copyDesc;
+
+            if (GetInputOutputCount())
+            {
+                PassAttachmentBinding& tmpBind = GetInputOutputBinding(0);
+                const RHI::Buffer *tmpBuf = context.GetBuffer(tmpBind.GetAttachment()->GetAttachmentId());
+                printf("CommPass BuildCommandListInternal tmp buf %p\n", tmpBuf);
+            }
         }
 
         void CommPass::CopyBufferToImage(const RHI::FrameGraphCompileContext& context)

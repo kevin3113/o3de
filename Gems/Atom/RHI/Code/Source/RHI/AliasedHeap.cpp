@@ -118,7 +118,8 @@ namespace AZ::RHI
         }
 
         const size_t heapOffsetInBytes = address.m_ptr;
-        printf("*** ActivateBuffer offset %zu scope %s\n", heapOffsetInBytes, scope.GetId().GetCStr());
+        printf("*** ActivateBuffer offset %zu scope %s atta [%s]\n", heapOffsetInBytes, scope.GetId().GetCStr(),
+            descriptor.m_attachmentId.GetCStr());
         m_heapStats.m_watermarkSize = AZStd::max(m_heapStats.m_watermarkSize, heapOffsetInBytes + static_cast<size_t>(memRequirements.m_sizeInBytes));
 
         Buffer* buffer = nullptr;
@@ -229,7 +230,8 @@ namespace AZ::RHI
             type_cstr = (char *)"Image";
         else
             type_cstr = (char *)"Buffer";
-        printf("*** Deactivate%s offset %zu scope %s\n", type_cstr, (size_t)heapAddress.m_ptr, scope.GetId().GetCStr());
+        printf("*** Deactivate%s offset %zu scope %s atta [%s]\n", type_cstr, (size_t)heapAddress.m_ptr, scope.GetId().GetCStr(),
+            attachmentId.GetCStr());
         m_firstFitAllocator.DeAllocate(heapAddress);
         m_firstFitAllocator.GarbageCollectForce();
         m_activeAttachmentLookup.erase(findIter);
@@ -246,7 +248,8 @@ namespace AZ::RHI
         }
 
         const size_t heapOffsetInBytes = address.m_ptr;
-        printf("*** ActivateImage offset %zu scope %s\n", heapOffsetInBytes, scope.GetId().GetCStr());
+        printf("*** ActivateImage offset %zu scope %s atta [%s]\n", heapOffsetInBytes, scope.GetId().GetCStr(),
+            descriptor.m_attachmentId.GetCStr());
         m_heapStats.m_watermarkSize = AZStd::max(m_heapStats.m_watermarkSize, heapOffsetInBytes + static_cast<size_t>(memRequirements.m_sizeInBytes));
 
         Image* image = nullptr;

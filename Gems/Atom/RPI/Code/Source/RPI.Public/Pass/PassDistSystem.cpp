@@ -751,6 +751,10 @@ namespace AZ
             slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
             slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
             passTemplate->m_slots.emplace_back(slot);
+
+            slot.m_name = "InputOutput";
+            slot.m_slotType = PassSlotType::InputOutput;
+            passTemplate->m_slots.emplace_back(slot);
             return passTemplate;
         }
 
