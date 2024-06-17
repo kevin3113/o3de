@@ -503,8 +503,9 @@ SetDrawListTag:/mnt/work/o3de/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RasterPa
 多进程模式工作路径：
 ~/o3deprj/O3DE/Projects/RenderDaemon/build/linux/bin/release
 编译：
+cmake -B build/linux -S . -GNinja Multi-Config -DLY_3RDPARTY_PATH=/home/kai/o3deprj/.o3de/3rdParty
 cmake --build build/linux --target RenderDaemon.GameLauncher RenderDaemon.HeadlessServerLauncher RenderDaemon.ServerLauncher RenderDaemon.UnifiedLauncher Editor --config release -j8
-
+cmake --build build/linux --target RenderDaemon.GameLauncher RenderDaemon.HeadlessServerLauncher RenderDaemon.ServerLauncher RenderDaemon.UnifiedLauncher Editor --config profile -j8
 client执行：
 DIST_PIPE=Test_0 ./Editor &> log1
 选择G3

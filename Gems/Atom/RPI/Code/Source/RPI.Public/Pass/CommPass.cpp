@@ -78,6 +78,28 @@ namespace AZ
 
         void CommPass::BuildInternal()
         {
+            if (m_data.m_cloneInput)
+            {
+                const Ptr<PassAttachment>& source = GetInputBinding(0).GetAttachment();
+                Ptr<PassAttachment> dest = source->Clone();
+
+                // Set bind flags to CopyWrite. Other bind flags will be auto-inferred by pass system
+                if (dest->m_descriptor.m_type == RHI::AttachmentType::Image)
+                {
+                    dest->m_descriptor.m_image.m_bindFlags = RHI::ImageBindFlags::CopyWrite;
+                }
+                else if (dest->m_descriptor.m_type == RHI::AttachmentType::Buffer)
+                {
+                    dest->m_descriptor.m_buffer.m_bindFlags = RHI::BufferBindFlags::CopyWrite;
+                }
+
+                // Set path name for the new attachment and add it to our attachment list
+                dest->ComputePathName(GetPathName());
+                m_ownedAttachments.push_back(dest);
+
+                // Set the output binding to the new attachment
+                GetOutputBinding(0).SetAttachment(dest);
+            }
         }
 
         // --- Scope producer functions ---

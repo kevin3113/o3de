@@ -29,6 +29,8 @@ namespace AZ
 
             static void Reflect(ReflectContext* context);
 
+            bool m_cloneInput = true;
+
             // Whether the pass should use the copy queue.
             bool m_useCopyQueue = false;
 

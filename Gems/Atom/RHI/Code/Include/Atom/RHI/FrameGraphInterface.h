@@ -234,8 +234,8 @@ namespace AZ::RHI
 
         void GraphStat(const char *token)
         {
-            printf("%s cur FrameGraph node count %d edge count %d\n", token,
-                (int)m_frameGraph.m_graphNodes.size(), (int)m_frameGraph.m_graphEdges.size());
+            //printf("%s cur FrameGraph node count %d edge count %d\n", token,
+            //    (int)m_frameGraph.m_graphNodes.size(), (int)m_frameGraph.m_graphEdges.size());
         }
 
     private:

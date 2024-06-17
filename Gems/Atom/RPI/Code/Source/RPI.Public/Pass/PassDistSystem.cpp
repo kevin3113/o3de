@@ -731,58 +731,64 @@ namespace AZ
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
             return add;
         }
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
 
+        AZStd::shared_ptr<PassTemplate> PassDistSystem::CreateCommPassTemplate(Name tempName)
         {
             AZStd::shared_ptr<PassTemplate> passTemplate;
             passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = "FullscreenShadowPassAfterTemplate";
+            passTemplate->m_name = tempName;
             passTemplate->m_passClass = "CommPass";
-            //passTemplate->m_passClass = "CopyPass";
 
             PassSlot slot;
-            PassConnection conn;
-
-            slot.m_name = "CommInput";
+            slot.m_name = "Input";
             slot.m_slotType = PassSlotType::Input;
-            conn.m_localSlot = slot.m_name;
+            slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
+            slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Load;
             passTemplate->m_slots.emplace_back(slot);
+
+            slot.m_name = "Output";
+            slot.m_slotType = PassSlotType::Output;
+            slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
+            slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
+            passTemplate->m_slots.emplace_back(slot);
+            return passTemplate;
+        }
+
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
+        {
+            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassAfterTemplate"));
+
+            PassConnection conn;
+            conn.m_localSlot = "Input";
             conn.m_attachmentRef.m_pass = node->GetName();
             conn.m_attachmentRef.m_attachment = "Output";
             passTemplate->m_connections.emplace_back(conn);
-
-            PassImageAttachmentDesc outDesc;
-            outDesc.m_name = "CommOutputImage";
-            outDesc.m_imageDescriptor = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
-            if (node->GetOutputBinding(0).GetAttachment()->m_sizeSource)
-            {
-                auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
-                if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
-                {
-                    outDesc.m_imageDescriptor = refAttachment->m_descriptor.m_image;
-                }
-            }
-            passTemplate->m_imageAttachments.emplace_back(outDesc);
-
-            slot.m_name = "CommOutput";
-            slot.m_slotType = PassSlotType::Output;
-            conn.m_localSlot = slot.m_name;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_attachmentRef.m_pass = "This";
-            conn.m_attachmentRef.m_attachment = outDesc.m_name;
-            passTemplate->m_connections.emplace_back(conn);
-
-            auto passData = AZStd::make_shared<CommPassData>();
-            passData->m_submit = true;
-            //auto passData = AZStd::make_shared<CopyPassData>();
-            //passData->m_cloneInput = false;
-            passTemplate->m_passData = passData;
 
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
             return add;
         }
+#if 0
+        Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
+        {
+            PassRequest req;
+            req.m_passName = name;
+            req.m_templateName = "CopyPassTemplate";
 
+            PassConnection conn;
+            conn.m_localSlot = "Input";
+            conn.m_attachmentRef.m_pass = node->GetName();
+            conn.m_attachmentRef.m_attachment = "Output";
+            req.m_connections.emplace_back(conn);
+
+            auto passData = AZStd::make_shared<CopyPassData>();
+            passData->m_cloneInput = true;
+            req.m_passData = passData;
+
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
+            return add;
+        }
+#endif
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> prePass, Ptr<Pass> node)
         {
             AZStd::shared_ptr<PassTemplate> passTemplate;
@@ -826,7 +832,8 @@ namespace AZ
             //passData->m_cloneInput = false;
 
             auto passData = AZStd::make_shared<CommPassData>();
-            passData->m_submit = true;
+            //passData->m_submit = false;
+            passData->m_cloneInput = false;
             //passData->m_recvData = true;
             passTemplate->m_passData = passData;
 
@@ -1408,7 +1415,7 @@ namespace AZ
                     if (conn.m_attachmentRef.m_pass == pass->GetName())
                     {
                         conn.m_attachmentRef.m_pass = afterPass->GetName();
-                        conn.m_attachmentRef.m_attachment = "CommOutput";
+                        conn.m_attachmentRef.m_attachment = "Output";
                         follows.emplace_back(pass);
                         printf("modifing pass %s slot %s connect pass to %s\n", curPass->GetName().GetCStr(),
                             conn.m_localSlot.GetCStr(), conn.m_attachmentRef.m_pass.GetCStr());
