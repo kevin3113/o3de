@@ -649,34 +649,22 @@ namespace AZ
 
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node)
         {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = "FullscreenShadowPassPreTemplate";
-            passTemplate->m_passClass = "ComputePass";
+            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassPreTemplate"), 3);
 
             PassSlot slot;
             PassConnection conn;
 
-            slot.m_name = "DirectionalShadowmaps";
-            slot.m_slotType = PassSlotType::InputOutput;
-            conn.m_localSlot = slot.m_name;
-            passTemplate->m_slots.emplace_back(slot);
+            conn.m_localSlot = "Input0";
             conn.m_attachmentRef.m_pass = "Cascades";
             conn.m_attachmentRef.m_attachment = "Shadowmap";
             passTemplate->m_connections.emplace_back(conn);
 
-            slot.m_name = "Depth";
-            slot.m_slotType = PassSlotType::InputOutput;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_localSlot = slot.m_name;
+            conn.m_localSlot = "Input1";
             conn.m_attachmentRef.m_pass = "PipelineGlobal";
             conn.m_attachmentRef.m_attachment = "DepthMSAA";
             passTemplate->m_connections.emplace_back(conn);
 
-            slot.m_name = "DepthLinear";
-            slot.m_slotType = PassSlotType::InputOutput;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_localSlot = slot.m_name;
+            conn.m_localSlot = "Input2";
             conn.m_attachmentRef.m_pass = "PipelineGlobal";
             conn.m_attachmentRef.m_attachment = "DepthLinear";
             passTemplate->m_connections.emplace_back(conn);
@@ -1405,16 +1393,23 @@ namespace AZ
             AZStd::vector<Ptr<Pass>> follows;
 
             pass->m_request.m_connections.clear();
-            //pass->m_template->m_connections.clear();
-            for (auto &conn : prePass->m_template->m_connections)
             {
-                PassConnection mconn;
-                mconn.m_localSlot = conn.m_localSlot;
-                mconn.m_attachmentRef.m_pass = prePass->GetName();
-                mconn.m_attachmentRef.m_attachment = conn.m_localSlot;
-                pass->m_request.m_connections.emplace_back(mconn);
-            }
+                PassConnection conn;
+                conn.m_localSlot = "DirectionalShadowmaps";
+                conn.m_attachmentRef.m_pass = prePass->GetName();
+                conn.m_attachmentRef.m_attachment = "Output0";
+                pass->m_request.m_connections.emplace_back(conn);
 
+                conn.m_localSlot = "Depth";
+                conn.m_attachmentRef.m_pass = prePass->GetName();
+                conn.m_attachmentRef.m_attachment = "Output1";
+                pass->m_request.m_connections.emplace_back(conn);
+
+                conn.m_localSlot = "DepthLinear";
+                conn.m_attachmentRef.m_pass = prePass->GetName();
+                conn.m_attachmentRef.m_attachment = "Output2";
+                pass->m_request.m_connections.emplace_back(conn);
+            }
             for (auto &conn : pass->m_request.m_connections)
             {
                 printf("After modify pass [%s] slot [%s] connect name [%s] slot [%s]\n",
