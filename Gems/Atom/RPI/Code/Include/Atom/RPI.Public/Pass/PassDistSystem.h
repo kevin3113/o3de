@@ -101,9 +101,9 @@ namespace AZ
 
             Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> &modify);
 
-            void AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, std::string suffix);
+            void AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, PassSlotType slotType, std::string suffix);
 
-            AZStd::shared_ptr<PassTemplate> CreateCommPassTemplate(Name tempName, uint32_t count);
+            AZStd::shared_ptr<PassTemplate> CreateCommPassTemplate(Name tempName, PassSlotType slotType, uint32_t count);
 
             Ptr<Pass> CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node);
 

@@ -37,7 +37,7 @@ namespace AZ
 
             static void Reflect(ReflectContext* context);
 
-            bool m_cloneInput = true;
+            bool m_cloneInput = false;
 
             uint32_t m_splitCnt = 1;
 
@@ -46,7 +46,7 @@ namespace AZ
 
             CommOper m_commOper = CommOper::None;
 
-            bool m_submit = true;
+            bool m_submit = false;
         };
     } // namespace RPI
 } // namespace AZ

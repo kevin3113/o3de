@@ -650,22 +650,23 @@ namespace AZ
 
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node)
         {
-            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassPreTemplate"), 3);
+            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassPreTemplate"),
+                PassSlotType::InputOutput, 3);
 
             PassSlot slot;
             PassConnection conn;
 
-            conn.m_localSlot = "Input0";
+            conn.m_localSlot = "InputOutput0";
             conn.m_attachmentRef.m_pass = "Cascades";
             conn.m_attachmentRef.m_attachment = "Shadowmap";
             passTemplate->m_connections.emplace_back(conn);
 
-            conn.m_localSlot = "Input1";
+            conn.m_localSlot = "InputOutput1";
             conn.m_attachmentRef.m_pass = "PipelineGlobal";
             conn.m_attachmentRef.m_attachment = "DepthMSAA";
             passTemplate->m_connections.emplace_back(conn);
 
-            conn.m_localSlot = "Input2";
+            conn.m_localSlot = "InputOutput2";
             conn.m_attachmentRef.m_pass = "PipelineGlobal";
             conn.m_attachmentRef.m_attachment = "DepthLinear";
             passTemplate->m_connections.emplace_back(conn);
@@ -721,27 +722,36 @@ namespace AZ
             return add;
         }
 
-        void PassDistSystem::AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, std::string suffix)
+        void PassDistSystem::AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, PassSlotType slotType, std::string suffix)
         {
             PassSlot slot;
-            slot.m_name = std::string(std::string("Input") + suffix).c_str();
-            slot.m_slotType = PassSlotType::Input;
-            slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
-            slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Load;
-            passTemplate->m_slots.emplace_back(slot);
-
-            slot.m_name = std::string(std::string("Output") + suffix).c_str();
-            slot.m_slotType = PassSlotType::Output;
-            slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
-            slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
-            passTemplate->m_slots.emplace_back(slot);
-
-            slot.m_name = std::string(std::string("InputOutput") + suffix).c_str();
-            slot.m_slotType = PassSlotType::InputOutput;
-            passTemplate->m_slots.emplace_back(slot);
+            if (slotType == PassSlotType::InputOutput)
+            {
+                slot.m_name = std::string(std::string("InputOutput") + suffix).c_str();
+                slot.m_slotType = PassSlotType::InputOutput;
+                slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
+                slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Load;
+                passTemplate->m_slots.emplace_back(slot);
+            }
+            else if (slotType == PassSlotType::Input)
+            {
+                slot.m_name = std::string(std::string("Input") + suffix).c_str();
+                slot.m_slotType = PassSlotType::Input;
+                slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
+                slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Load;
+                passTemplate->m_slots.emplace_back(slot);
+            }
+            else
+            {
+                slot.m_name = std::string(std::string("Output") + suffix).c_str();
+                slot.m_slotType = PassSlotType::Output;
+                slot.m_scopeAttachmentUsage = RHI::ScopeAttachmentUsage::Copy;
+                slot.m_loadStoreAction.m_loadAction = RHI::AttachmentLoadAction::Clear;
+                passTemplate->m_slots.emplace_back(slot);
+            }
         }
 
-        AZStd::shared_ptr<PassTemplate> PassDistSystem::CreateCommPassTemplate(Name tempName, uint32_t count)
+        AZStd::shared_ptr<PassTemplate> PassDistSystem::CreateCommPassTemplate(Name tempName, PassSlotType slotType, uint32_t count)
         {
             AZStd::shared_ptr<PassTemplate> passTemplate;
             passTemplate = AZStd::make_shared<PassTemplate>();
@@ -749,13 +759,13 @@ namespace AZ
             passTemplate->m_passClass = "CommPass";
             if (count == 1)
             {
-                AddCommPassSlot(passTemplate, "");
+                AddCommPassSlot(passTemplate, slotType, "");
             }
             else
             {
                 for (uint32_t index = 0; index < count; index++)
                 {
-                    AddCommPassSlot(passTemplate, std::to_string(index));
+                    AddCommPassSlot(passTemplate, slotType, std::to_string(index));
                 }
             }
             return passTemplate;
@@ -763,13 +773,20 @@ namespace AZ
 
         Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
         {
-            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassAfterTemplate"), 1);
+            AZStd::shared_ptr<PassTemplate> passTemplate = CreateCommPassTemplate(Name("FullscreenShadowPassAfterTemplate"),
+                PassSlotType::InputOutput, 1);
 
             PassConnection conn;
-            conn.m_localSlot = "Input";
+            conn.m_localSlot = "InputOutput";
             conn.m_attachmentRef.m_pass = node->GetName();
             conn.m_attachmentRef.m_attachment = "Output";
             passTemplate->m_connections.emplace_back(conn);
+
+            auto passData = AZStd::make_shared<CommPassData>();
+            passData->m_submit = false;
+            passData->m_cloneInput = false;
+            passData->m_commOper = CommOper::MergeOutput;
+            passTemplate->m_passData = passData;
 
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
@@ -841,7 +858,7 @@ namespace AZ
             auto passData = AZStd::make_shared<CommPassData>();
             passData->m_submit = false;
             passData->m_cloneInput = false;
-            passData->m_commOper = CommOper::MergeOutput;
+            passData->m_commOper = CommOper::None;
             passTemplate->m_passData = passData;
 
             m_templates.emplace_back(passTemplate);
@@ -1398,17 +1415,17 @@ namespace AZ
                 PassConnection conn;
                 conn.m_localSlot = "DirectionalShadowmaps";
                 conn.m_attachmentRef.m_pass = prePass->GetName();
-                conn.m_attachmentRef.m_attachment = "Output0";
+                conn.m_attachmentRef.m_attachment = "InputOutput0";
                 pass->m_request.m_connections.emplace_back(conn);
 
                 conn.m_localSlot = "Depth";
                 conn.m_attachmentRef.m_pass = prePass->GetName();
-                conn.m_attachmentRef.m_attachment = "Output1";
+                conn.m_attachmentRef.m_attachment = "InputOutput1";
                 pass->m_request.m_connections.emplace_back(conn);
 
                 conn.m_localSlot = "DepthLinear";
                 conn.m_attachmentRef.m_pass = prePass->GetName();
-                conn.m_attachmentRef.m_attachment = "Output2";
+                conn.m_attachmentRef.m_attachment = "InputOutput2";
                 pass->m_request.m_connections.emplace_back(conn);
             }
             for (auto &conn : pass->m_request.m_connections)
@@ -1429,7 +1446,7 @@ namespace AZ
                     if (conn.m_attachmentRef.m_pass == pass->GetName())
                     {
                         conn.m_attachmentRef.m_pass = afterPass->GetName();
-                        conn.m_attachmentRef.m_attachment = "Output";
+                        conn.m_attachmentRef.m_attachment = "InputOutput";
                         follows.emplace_back(pass);
                         printf("modifing pass %s slot %s connect pass to %s\n", curPass->GetName().GetCStr(),
                             conn.m_localSlot.GetCStr(), conn.m_attachmentRef.m_pass.GetCStr());
@@ -1465,10 +1482,10 @@ namespace AZ
             Ptr<Pass> distPass = CreateFullscreenShadowDistPass(Name(distName.c_str()), prePass, pass);
             Ptr<Pass> afterPass = CreateFullscreenShadowDistAfterPass(Name(afterName.c_str()), distPass, pass);
             Ptr<Pass> outPass = CreateFullscreenShadowDistAfterOutPass(Name(outName.c_str()), afterPass);
-            root->AddChild(prePass);
-            root->AddChild(distPass);
-            root->AddChild(afterPass);
-            root->AddChild(outPass);
+            //root->AddChild(prePass);
+            //root->AddChild(distPass);
+            //root->AddChild(afterPass);
+            //root->AddChild(outPass);
 
             char *buf = (char *)malloc(10240);
             //memset(buf, 0xff, 10240);

@@ -173,6 +173,7 @@ namespace AZ
                 void *buf[8];
                 uint32_t len[8];
                 uint32_t count = 0;
+                printf("CommPass %s enter recv data message \n", GetName().GetCStr());
                 int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count);
                 printf("CommPass %s recv data message count %u ret %d\n", GetName().GetCStr(), count, ret);
                 for (int i = 0; i < count && i < 8; i++)
@@ -189,7 +190,7 @@ namespace AZ
                 {
                     if (copyItem.m_type != RHI::CopyItemType::Invalid)
                     {
-                        printf("CommPass::BuildCommandListInternal %s submit command\n", GetName().GetCStr());
+                        printf("CommPass::BuildCommandListInternal %s submit command thread %d\n", GetName().GetCStr(), (int)gettid());
                         context.GetCommandList()->Submit(copyItem);
                     }
                 }
