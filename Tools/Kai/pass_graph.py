@@ -61,7 +61,11 @@ def validate_edge(graph):
         ng.insert(0, k + ' ' + v + '\n')
     return ng
 
-with open ('log.log', 'r') as fd:
+if len(sys.argv) > 1:
+    log_file = sys.argv[1]
+else:
+    log_file = 'log.log'
+with open (log_file, 'r') as fd:
     one_pipe_line = False
     one_pipe_done = False
     one_pipe_started = False

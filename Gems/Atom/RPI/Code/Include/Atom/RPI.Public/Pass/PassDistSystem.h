@@ -99,29 +99,27 @@ namespace AZ
 
             void ShowConnections(Ptr<Pass> &pass);
 
-            Ptr<Pass> CreateDistPass(Name name, Ptr<Pass> &modify);
-
             void AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, PassSlotType slotType, std::string suffix);
 
             AZStd::shared_ptr<PassTemplate> CreateCommPassTemplate(Name tempName, PassSlotType slotType, uint32_t count);
 
             Ptr<Pass> CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node);
 
-            Ptr<Pass> CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node);
-
             Ptr<Pass> CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node);
+#if 0
+            Ptr<Pass> CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node);
 
             Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             Ptr<Pass> CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node);
-
+#endif
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
 
-            uint32_t CreateFullscreenShadowDistPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass>prePass, Ptr<Pass> node);
+            uint32_t CreateFullscreenShadowDistPassMsg(char *buf, uint32_t len, Name name, Name prePassName, Ptr<Pass> node);
 
-            uint32_t CreateFullscreenShadowDistAfterPassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
+            uint32_t CreateFullscreenShadowDistAfterPassMsg(char *buf, uint32_t len, Name name, Name prePassName);
 
             uint32_t ParsePassAttrsMsg(void *passMsgStart, PassSlotList &slots, PassConnectionList &conns,
                 PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs);
