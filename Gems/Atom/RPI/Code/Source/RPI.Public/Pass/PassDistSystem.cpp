@@ -960,18 +960,18 @@ namespace AZ
             MsgPassGraph *passHead = (MsgPassGraph *)pos;
             pos += sizeof(MsgPassGraph);
 
-            PassRequest req;
+            PassRequest *req = aznew PassRequest();
             PassSlotList slots;
-            req.m_passName = Name(passHead->name);
-            req.m_templateName = Name(passHead->passTemp);
+            req->m_passName = Name(passHead->name);
+            req->m_templateName = Name(passHead->passTemp);
 
             printf("Recv Pass [%s] create from request template [%s]\n",
                 passHead->name, passHead->passTemp);
 
-            ParsePassAttrsMsg((void *)passHead, slots, req.m_connections,
-                req.m_imageAttachmentOverrides, req.m_bufferAttachmentOverrides);
+            ParsePassAttrsMsg((void *)passHead, slots, req->m_connections,
+                req->m_imageAttachmentOverrides, req->m_bufferAttachmentOverrides);
 
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req);
             return add;
             //return nullptr;
         }
@@ -1233,6 +1233,7 @@ namespace AZ
 
                 ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead), root);
                 free(msg);
+                printf("### Test pipeline started server %d pass number 3!\n", (int)m_isServer);
             }
             else
             {

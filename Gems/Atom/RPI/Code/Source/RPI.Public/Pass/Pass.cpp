@@ -59,9 +59,9 @@ namespace AZ
                 m_viewTag = m_passData->m_pipelineViewTag;
             }
 
-            printf("Pass [%s] path [%s] create from template %d request %d\n",
+            printf("Pass [%s] path [%s] create from template %d request %d pass data %p\n",
                 m_name.GetCStr(), m_path.GetCStr(), (int)(descriptor.m_passTemplate != nullptr),
-                (int)(descriptor.m_passRequest != nullptr));
+                (int)(descriptor.m_passRequest != nullptr), m_passData.get());
 
             m_flags.m_enabled = true;
             m_flags.m_timestampQueryEnabled = false;
