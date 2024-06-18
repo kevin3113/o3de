@@ -167,7 +167,7 @@ namespace AZ
         void CommPass::BuildCommandListInternal(const RHI::FrameGraphExecuteContext& context)
         {
             // pending data in
-            if (m_data.m_recvData)
+            if (m_data.m_commOper == CommOper::MergeOutput || m_data.m_commOper == CommOper::PrepareInput)
             {
                 // test
                 void *buf[8];
@@ -197,7 +197,7 @@ namespace AZ
             }
 
             // send data to out
-            if (m_data.m_sendData)
+            if (m_data.m_commOper == CommOper::CopyInput || m_data.m_commOper == CommOper::CopyOutput)
             {
                 // test
                 void *data[1];

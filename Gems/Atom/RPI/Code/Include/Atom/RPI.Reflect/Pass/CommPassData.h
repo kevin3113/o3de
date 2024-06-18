@@ -17,6 +17,14 @@ namespace AZ
 {
     namespace RPI
     {
+        enum class CommOper : uint32_t {
+            None = 0,
+            CopyInput,
+            PrepareInput,
+            CopyOutput,
+            MergeOutput,
+            Count
+        };
         //! Custom data for the CopyPass. Should be specified in the PassRequest.
         struct CommPassData
             : public PassData
@@ -31,14 +39,12 @@ namespace AZ
 
             bool m_cloneInput = true;
 
+            uint32_t m_splitCnt = 1;
+
             // Whether the pass should use the copy queue.
             bool m_useCopyQueue = false;
 
-            bool m_sendData = false;
-
-            bool m_recvData = false;
-
-            bool m_distMain = false;
+            CommOper m_commOper = CommOper::None;
 
             bool m_submit = true;
         };

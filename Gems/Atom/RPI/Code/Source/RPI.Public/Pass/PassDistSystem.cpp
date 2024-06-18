@@ -553,7 +553,7 @@ namespace AZ
                 memcpy(msg + curPos, data[msgCnt], len[msgCnt]);
                 free(data[msgCnt]);
                 curPos += len[msgCnt];
-                printf("PassDistSystem::SendData pack data %p len %u\n", data[msgCnt], len[msgCnt]);
+                printf("PassDistSystem::SendData pack data %p len %u index %u\n", data[msgCnt], len[msgCnt], msgCnt);
             }
             if (curPos != totalLen)
             {
@@ -567,8 +567,8 @@ namespace AZ
             {
                 EnqueOutputDataMsg((void *)msg);
             }
-            printf("PassDistSystem::SendData cur is server %d put msg len %u\n", 
-                (int)m_isServer, totalLen);
+            printf("PassDistSystem::SendData cur is server %d put msg len %u count %u\n", 
+                (int)m_isServer, totalLen, count);
             return 0;
         }
 
@@ -597,6 +597,7 @@ namespace AZ
                 printf("PassDistSystem::RecvData cur is server %d get msg len %u\n",
                     (int)m_isServer, *len);
                 curPos += len[msgCnt];
+                msgCnt++;
             }
             *count = msgCnt;
             printf("PassDistSystem::RecvData input size %u total recv data count %u\n", size, msgCnt);
@@ -838,9 +839,9 @@ namespace AZ
             //passData->m_cloneInput = false;
 
             auto passData = AZStd::make_shared<CommPassData>();
-            //passData->m_submit = false;
+            passData->m_submit = false;
             passData->m_cloneInput = false;
-            //passData->m_recvData = true;
+            passData->m_commOper = CommOper::MergeOutput;
             passTemplate->m_passData = passData;
 
             m_templates.emplace_back(passTemplate);
@@ -1176,8 +1177,8 @@ namespace AZ
             if (passTemplate->m_passClass == Name("CommPass"))
             {
                 auto passData = AZStd::make_shared<CommPassData>();
-                //passData->m_cloneInput = false;
-                //passData->m_sendData = true;
+                passData->m_cloneInput = false;
+                passData->m_commOper = CommOper::CopyOutput;
                 passData->m_submit = false;
                 //passData->m_bufferDestinationBytesPerRow = imgDesc.m_size.m_width * RHI::GetFormatSize(imgDesc.m_format);
                 passTemplate->m_passData = passData;
