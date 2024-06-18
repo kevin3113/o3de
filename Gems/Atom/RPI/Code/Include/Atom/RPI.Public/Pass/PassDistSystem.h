@@ -142,12 +142,6 @@ namespace AZ
 
             void UpdateDistPasses(void);
 
-            bool IsActive(void);
-
-            void Active(void);
-
-            void Inactive(void);
-
             void ModifyDistPassGraph(Ptr<ParentPass> &root);
 
             void BuildDistPassGraph(Ptr<ParentPass> &root);

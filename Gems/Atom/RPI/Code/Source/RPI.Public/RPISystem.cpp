@@ -119,9 +119,9 @@ namespace AZ
             m_passSystem.Init();
             m_passDistSystem.Init();
             char *pipeline = getenv("DIST_PIPE");
-            if (pipeline)
+            if (pipeline && atoi(pipeline))
             {
-                PassDistSystemInterface::Get()->SetActivePipeline(Name(pipeline));
+                PassDistSystemInterface::Get()->SetActivePipeline(Name("Test_0"));
             }
             else
             {
@@ -426,7 +426,9 @@ namespace AZ
                 }
                 if (PassDistSystemInterface::Get()->IsEnable())
                 {
-                    printf("### Test pipeline started!\n");
+                    printf("### Test pipeline started server %d pass number %d!\n", 
+                        (int)PassDistSystemInterface::Get()->GetActivePipeline().IsEmpty(),
+                        (int)PassDistSystemInterface::Get()->GetDistPipeline(1)->GetRootPass()->GetChildren().size());
                 }
             }
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);

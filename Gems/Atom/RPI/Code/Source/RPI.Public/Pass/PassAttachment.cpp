@@ -123,7 +123,7 @@ namespace AZ
             if (m_descriptor.m_type == RHI::AttachmentType::Image &&
                 (m_lifetime == RHI::AttachmentLifetimeType::Transient || updateImportedAttachments == true))
             {
-                printf("goto update atta id [%s]\n", GetAttachmentId().GetCStr());
+                //printf("goto update atta id [%s]\n", GetAttachmentId().GetCStr());
                 UpdateImageFormat();
                 UpdateImageMultisampleState();
                 UpdateImageSize();
@@ -139,7 +139,7 @@ namespace AZ
                     m_descriptor.m_image.m_mipLevels = static_cast<uint16_t>(mipMapLevels);
                 }
             }
-            printf("end update atta id [%s]\n", GetAttachmentId().GetCStr());
+            //printf("end update atta id [%s]\n", GetAttachmentId().GetCStr());
         }
 
         void PassAttachment::OnAttached(const PassAttachmentBinding& binding)
@@ -333,17 +333,17 @@ namespace AZ
             m_attachment = attachment;
             m_unifiedScopeDesc.m_attachmentId = attachment->GetAttachmentId();
 
-            printf("SetAttachment m_unifiedScopeDesc type %d id %s\n",
-                (int)m_unifiedScopeDesc.GetType(),
-                m_unifiedScopeDesc.m_attachmentId.GetCStr());
+            //printf("SetAttachment m_unifiedScopeDesc type %d id %s\n",
+            //    (int)m_unifiedScopeDesc.GetType(),
+            //    m_unifiedScopeDesc.m_attachmentId.GetCStr());
 
             // setup scope descriptors for transient attachments if they weren't set in slot
             if (m_unifiedScopeDesc.GetType() == RHI::AttachmentType::Uninitialized)
             {
-                printf("SetAttachment attachment->m_lifetime is %d\n", (int)attachment->m_lifetime);
+                //printf("SetAttachment attachment->m_lifetime is %d\n", (int)attachment->m_lifetime);
                 if (attachment->m_lifetime == RHI::AttachmentLifetimeType::Transient)
                 {
-                    printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
+                    //printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
                     if (attachment->GetAttachmentType() == RHI::AttachmentType::Buffer)
                     {
                         // AZ_Assert(false, "Transient buffer's buffer view need to be set in slot");
@@ -356,10 +356,10 @@ namespace AZ
                 }
                 else if (attachment->m_lifetime == RHI::AttachmentLifetimeType::Imported)
                 {
-                    printf("SetAttachment attachment->m_importedResource is %p\n", attachment->m_importedResource.get());
+                    //printf("SetAttachment attachment->m_importedResource is %p\n", attachment->m_importedResource.get());
                     if (attachment->m_importedResource)
                     {
-                        printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
+                        //printf("SetAttachment attachment->GetAttachmentType is %d\n", (int)attachment->GetAttachmentType());
                         if (attachment->GetAttachmentType() == RHI::AttachmentType::Buffer)
                         {
                             Buffer* buffer = static_cast<Buffer*>(attachment->m_importedResource.get());

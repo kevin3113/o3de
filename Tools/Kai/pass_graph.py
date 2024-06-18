@@ -86,7 +86,7 @@ with open (log_file, 'r') as fd:
         elif one_pipe_line == True and line.find('<= FrameScheduler::PrepareProducers After FrameGraph node count') >= 0:
             one_pipe_line = False
             one_pipe_done = True
-        elif two_pipe_done == False and line.find('### Test pipeline started!') >= 0:
+        elif two_pipe_done == False and (line.find('### Test pipeline started server 1') >= 0 or line.find('### Test pipeline started server 0 pass number 3') >= 0):
             two_pipe_line = True
             if not two_pipe_started:
                 two_pipe_started = True

@@ -487,9 +487,9 @@ namespace AZ
             uint32_t bindingMask = (1 << uint32_t(localBinding->m_slotType));
             if (!(bindingMask & slotTypeMask))
             {
-                printf("check bind mask pass [%s] local slot [%s] not match [%d,%d]\n",
-                    GetName().GetCStr(), connection.m_localSlot.GetCStr(),
-                    (int)bindingMask, (int)slotTypeMask);
+                //printf("check bind mask pass [%s] local slot [%s] not match [%d,%d]\n",
+                //    GetName().GetCStr(), connection.m_localSlot.GetCStr(),
+                //    (int)bindingMask, (int)slotTypeMask);
                 return;
             }
 
@@ -509,8 +509,8 @@ namespace AZ
                 foundPass = true;
                 attachment = FindOwnedAttachment(connectedSlotName);
 
-                printf("Conntect pass [%s] is This attref [%s] atta %p\n", GetName().GetCStr(),
-                    connectedSlotName.GetCStr(), attachment.get());
+                //printf("Conntect pass [%s] is This attref [%s] atta %p\n", GetName().GetCStr(),
+                //    connectedSlotName.GetCStr(), attachment.get());
 
                 AZ_RPI_PASS_ERROR(
                     attachment, "%s: Current Pass doesn't own an attachment named [%s].", prefix().c_str(), connectedSlotName.GetCStr());
@@ -524,7 +524,7 @@ namespace AZ
 
                 foundPass = true;   // Using the "Pipeline" keyword, no need to continue searching for passes
 
-                printf("Conntect pass [%s] is PipelineGlobal\n", GetName().GetCStr());
+                //printf("Conntect pass [%s] is PipelineGlobal\n", GetName().GetCStr());
 
                 if (m_pipeline)
                 {
@@ -547,21 +547,21 @@ namespace AZ
             {
                 if (connectedPassName == PassNameParent)
                 {
-                    printf("Conntect pass [%s] is parent\n", GetName().GetCStr());
+                    //printf("Conntect pass [%s] is parent\n", GetName().GetCStr());
                     foundPass = true;
                     connectedBinding = m_parent->FindAttachmentBinding(connectedSlotName);
                     if (!connectedBinding)
                     {
                         attachment = m_parent->FindOwnedAttachment(connectedSlotName);
-                        printf("connectedBinding of parent pass [%s] got nullptr\n", GetName().GetCStr());
+                        //printf("connectedBinding of parent pass [%s] got nullptr\n", GetName().GetCStr());
                     }
                     else
                     {
                         slotTypeMismatch = connectedBinding->m_slotType != localBinding->m_slotType &&
                             connectedBinding->m_slotType != PassSlotType::InputOutput &&
                             localBinding->m_slotType != PassSlotType::InputOutput;
-                        printf("connectedBinding of parent pass [%s] not match [%d, %d]\n", GetName().GetCStr(),
-                            (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
+                        //printf("connectedBinding of parent pass [%s] not match [%d, %d]\n", GetName().GetCStr(),
+                        //    (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
                     }
                 }
                 else
@@ -570,20 +570,20 @@ namespace AZ
                     Ptr<Pass> siblingPass = m_parent->FindChildPass(connectedPassName);
                     if (siblingPass)
                     {
-                        printf("attachment of child pass [%s] find [%s] slot [%s]\n", GetName().GetCStr(),
-                            siblingPass->GetName().GetCStr(), connectedSlotName.GetCStr());
+                        //printf("attachment of child pass [%s] find [%s] slot [%s]\n", GetName().GetCStr(),
+                        //    siblingPass->GetName().GetCStr(), connectedSlotName.GetCStr());
                         foundPass = true;
                         connectedBinding = siblingPass->FindAttachmentBinding(connectedSlotName);
 
                         slotTypeMismatch = connectedBinding != nullptr &&
                             connectedBinding->m_slotType == localBinding->m_slotType &&
                             connectedBinding->m_slotType != PassSlotType::InputOutput;
-                        if (connectedBinding)
-                            printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
-                                (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
+                        //if (connectedBinding)
+                        //    printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
+                        //        (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
                     }
-                    printf("attachment of child pass [%s] find [%p] of [%s]\n", GetName().GetCStr(), siblingPass.get(),
-                        connectedPassName.GetCStr());
+                    //printf("attachment of child pass [%s] find [%p] of [%s]\n", GetName().GetCStr(), siblingPass.get(),
+                    //    connectedPassName.GetCStr());
                 }
             }
 
@@ -598,16 +598,16 @@ namespace AZ
                     foundPass = true;
                     connectedBinding = childPass->FindAttachmentBinding(connectedSlotName);
 
-                    printf("attachment of self child pass [%s] find [%s]\n", GetName().GetCStr(),
-                            childPass->GetName().GetCStr());
+                    //printf("attachment of self child pass [%s] find [%s]\n", GetName().GetCStr(),
+                    //        childPass->GetName().GetCStr());
 
                     slotTypeMismatch = connectedBinding != nullptr &&
                         connectedBinding->m_slotType != localBinding->m_slotType &&
                         connectedBinding->m_slotType != PassSlotType::InputOutput &&
                         localBinding->m_slotType != PassSlotType::InputOutput;
-                    if (connectedBinding)
-                            printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
-                                (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
+                    //if (connectedBinding)
+                    //        printf("attachment of pass [%s] slot type [%d, %d]\n", GetName().GetCStr(),
+                    //            (int)connectedBinding->m_slotType, (int)localBinding->m_slotType);
 
                 }
             }
@@ -626,15 +626,15 @@ namespace AZ
 
             if (connectedBinding)
             {
-                printf("connectedBinding check pass [%s] not null\n", GetName().GetCStr());
+                //printf("connectedBinding check pass [%s] not null\n", GetName().GetCStr());
                 localBinding->m_connectedBinding = connectedBinding;
                 UpdateConnectedBinding(*localBinding);
 
             }
             else if (attachment)
             {
-                printf("attachment check pass [%s] not null id [%s]\n", GetName().GetCStr(),
-                    attachment->GetAttachmentId().GetCStr());
+                //printf("attachment check pass [%s] not null id [%s]\n", GetName().GetCStr(),
+                //    attachment->GetAttachmentId().GetCStr());
                 localBinding->SetOriginalAttachment(attachment);
             }
             else
@@ -1129,9 +1129,9 @@ namespace AZ
             // This involves getting the format and calculating the size from the source attachment
             for (Ptr<PassAttachment>& attachment: m_ownedAttachments)
             {
-                printf("Update m_ownedAttachments pass [%s] atta id [%s] type %d\n",
-                    GetName().GetCStr(), attachment->GetAttachmentId().GetCStr(),
-                    (int)attachment->GetAttachmentType());
+                //printf("Update m_ownedAttachments pass [%s] atta id [%s] type %d\n",
+                //    GetName().GetCStr(), attachment->GetAttachmentId().GetCStr(),
+                //    (int)attachment->GetAttachmentType());
                 attachment->Update();
             }
         }

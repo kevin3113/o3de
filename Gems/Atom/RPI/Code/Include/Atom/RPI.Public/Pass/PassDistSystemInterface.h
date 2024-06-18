@@ -60,12 +60,6 @@ namespace AZ
 
             static PassDistSystemInterface* Get(void);
 
-            virtual bool IsActive(void) = 0;
-
-            virtual void Active(void) = 0;
-
-            virtual void Inactive(void) = 0;
-
             virtual int Connect(int sfd) = 0;
 
             virtual int Send(int sfd) = 0;

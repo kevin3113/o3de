@@ -59,30 +59,9 @@ namespace AZ
 {
     namespace RPI
     {
-        static thread_local bool isActive = false;
-
         PassDistSystemInterface* PassDistSystemInterface::Get()
         {
             return Interface<PassDistSystemInterface>::Get();
-        }
-
-        bool PassDistSystem::IsActive()
-        {
-            if (m_isServer)
-            {
-                return true;
-            }
-            return isActive;
-        }
-
-        void PassDistSystem::Active()
-        {
-            isActive = true;
-        }
-
-        void PassDistSystem::Inactive()
-        {
-            isActive = false;
         }
 
         void PassDistSystem::Reflect(AZ::ReflectContext* context)
