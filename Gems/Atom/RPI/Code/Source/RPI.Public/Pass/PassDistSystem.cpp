@@ -145,7 +145,8 @@ namespace AZ
 
             for (int loop = 0;;loop++)
             {
-                if (!(loop & 1))
+                //if (!(loop & 1))
+                if (1)
                 {
                     msg = PassDistSystemInterface::Get()->DequePassMsg();
                 }
@@ -170,45 +171,6 @@ namespace AZ
             printf("SeverSendThread socket send to client disconnected!\n");
             *(int *)arg = 0;
             return nullptr;
-        }
-
-        int RecvOneMsg(int sfd, char **msg)
-        {
-            MsgHead msgHead;
-            ssize_t ret = read(sfd, &msgHead, sizeof(MsgHead));
-            if (ret != sizeof(MsgHead))
-            {
-                printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
-                return -1;
-            }
-            printf("RecvOneMsg recv message type %u len %u\n", msgHead.msgType, msgHead.msgLen);
-            if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
-            {
-                printf("RecvOneMsg recv invalid message!\n");
-                return -1;
-            }
-            char *buf = (char *)malloc(msgHead.msgLen);
-            memcpy(buf, &msgHead, sizeof(MsgHead));
-            uint32_t curLen = sizeof(MsgHead);
-            while (curLen < msgHead.msgLen)
-            {
-                ssize_t numRead = read(sfd, buf + curLen, msgHead.msgLen - curLen);
-                if (numRead <= 0)
-                {
-                    free(buf);
-                    printf("RecvOneMsg recv data error message body!\n");
-                    return -1;
-                }
-                curLen += (uint32_t)numRead;
-            }
-            if (curLen != msgHead.msgLen)
-            {
-                free(buf);
-                printf("RecvOneMsg recv data error message len %u!\n", curLen);
-                return -1;
-            }
-            *msg = buf;
-            return 0;
         }
 
         void *SeverRecvThread(void *arg)
@@ -283,6 +245,45 @@ namespace AZ
                 sfd = PassDistSystemInterface::Get()->Connect(sfd);
             }
             return nullptr;
+        }
+
+        int RecvOneMsg(int sfd, char **msg)
+        {
+            MsgHead msgHead;
+            ssize_t ret = read(sfd, &msgHead, sizeof(MsgHead));
+            if (ret != sizeof(MsgHead))
+            {
+                printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
+                return -1;
+            }
+            printf("RecvOneMsg recv message type %u len %u\n", msgHead.msgType, msgHead.msgLen);
+            if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
+            {
+                printf("RecvOneMsg recv invalid message!\n");
+                return -1;
+            }
+            char *buf = (char *)malloc(msgHead.msgLen);
+            memcpy(buf, &msgHead, sizeof(MsgHead));
+            uint32_t curLen = sizeof(MsgHead);
+            while (curLen < msgHead.msgLen)
+            {
+                ssize_t numRead = read(sfd, buf + curLen, msgHead.msgLen - curLen);
+                if (numRead <= 0)
+                {
+                    free(buf);
+                    printf("RecvOneMsg recv data error message body!\n");
+                    return -1;
+                }
+                curLen += (uint32_t)numRead;
+            }
+            if (curLen != msgHead.msgLen)
+            {
+                free(buf);
+                printf("RecvOneMsg recv data error message len %u!\n", curLen);
+                return -1;
+            }
+            *msg = buf;
+            return 0;
         }
 
         void PassDistSystem::CommInit(bool isServer, const char *path)
@@ -1092,7 +1093,7 @@ namespace AZ
             return false;
         }
 
-        void PassDistSystem::ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses)
+        void PassDistSystem::ModifyFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> &subPasses)
         {
             ShowConnections(pass);
             std::string orig = pass->GetName().GetCStr();
@@ -1149,7 +1150,6 @@ namespace AZ
             }
             struct PassDistNode node = {prePass, pass, afterPass, follows};
             AddDistNode(node);
-            CloneFullscreenShadow(pass);
         }
 
         void PassDistSystem::CloneFullscreenShadow(Ptr<Pass> pass)
@@ -1175,6 +1175,20 @@ namespace AZ
             DumpMsg("pack.txt", buf, msgHead->msgLen);
         }
 
+        void PassDistSystem::ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses)
+        {
+            if (!IsDistProcessed(pass->GetName()))
+            {
+                printf("pass [%s] to be modified!\n", pass->GetName().GetCStr());
+                ModifyFullscreenShadow(pass, subPasses);;
+            }
+            else
+            {
+                printf("pass [%s] has been modified!\n", pass->GetName().GetCStr());
+            }
+            CloneFullscreenShadow(pass);
+        }
+
         void PassDistSystem::ModifyDistPassGraph(Ptr<ParentPass> &root)
         {
             printf("ModifyDistPassGraph pipeline [%s] root pass [%s]\n",
@@ -1194,10 +1208,6 @@ namespace AZ
                 if (NameEndWith(pass->GetName(), "FullscreenShadowPass"))
                 {
                     printf("current pass [%s] is matched\n", pass->GetName().GetCStr());
-                    if (IsDistProcessed(pass->GetName())) {
-                        printf("pass [%s] has been modified!\n", pass->GetName().GetCStr());
-                        continue;
-                    }
                     procs.emplace_back([pass, subPasses, this]() {
                         this->ProcessFullscreenShadow(pass, subPasses);
                     });
@@ -1213,6 +1223,7 @@ namespace AZ
 
         void PassDistSystem::BuildDistPassGraph(Ptr<ParentPass> &root)
         {
+            root->RemoveChildren();
             void *msg = DequePassMsg(true);
             if (msg)
             {

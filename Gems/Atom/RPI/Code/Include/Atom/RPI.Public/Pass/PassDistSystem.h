@@ -130,7 +130,7 @@ namespace AZ
 
             uint32_t ParsePassCreateMsg(char *buf, uint32_t len, Ptr<ParentPass> &root);
 
-            void ProcessPassB(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
+            void ModifyFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> &subPasses);
 
             void ProcessFullscreenShadow(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>> subPasses);
 
