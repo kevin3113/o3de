@@ -103,6 +103,7 @@ namespace AZ
                     GetOutputBinding(index).SetAttachment(dest);
                 }
             }
+#if 0
             for (uint32_t index = 0; index < GetInputCount(); index++)
             {
                 const Ptr<PassAttachment>& inputAtt = GetInputBinding(index).GetAttachment();
@@ -125,6 +126,7 @@ namespace AZ
                     GetInputOutputBinding(index).SetAttachment(tmpBuf);
                 }
             }
+#endif
         }
 
         // --- Scope producer functions ---
@@ -251,14 +253,14 @@ namespace AZ
             copyDesc.m_destinationImage = context.GetImage(copyDest.GetAttachment()->GetAttachmentId());
             //copyDesc.m_destinationOrigin = m_data.m_imageDestinationOrigin;
             //copyDesc.m_destinationSubresource = m_data.m_imageDestinationSubresource;
-
+#if 0
             if (GetInputOutputCount())
             {
                 PassAttachmentBinding& tmpBind = GetInputOutputBinding(index);
                 const RHI::Buffer *tmpBuf = context.GetBuffer(tmpBind.GetAttachment()->GetAttachmentId());
                 printf("CommPass BuildCommandListInternal tmp buf %p\n", tmpBuf);
             }
-
+#endif
             printf("CommPass::CopyImage %s src %s to %s\n", GetName().GetCStr(),
                 copySource.GetAttachment()->GetAttachmentId().GetCStr(),
                 copyDest.GetAttachment()->GetAttachmentId().GetCStr());

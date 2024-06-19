@@ -24,7 +24,6 @@
 #include <Atom/RPI.Public/Pass/PassFactory.h>
 #include <Atom/RPI.Public/Pass/PassLibrary.h>
 #include <Atom/RPI.Public/Pass/PassDistSystem.h>
-#include <Atom/RPI.Public/Pass/PassDistUtil.h>
 #include <Atom/RPI.Public/Pass/PassUtils.h>
 #include <Atom/RPI.Public/Pass/Specific/SwapChainPass.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
@@ -145,8 +144,8 @@ namespace AZ
 
             for (int loop = 0;;loop++)
             {
-                //if (!(loop & 1))
-                if (1)
+                if (!(loop & 1))
+                //if (1)
                 {
                     msg = PassDistSystemInterface::Get()->DequePassMsg();
                 }
@@ -155,17 +154,17 @@ namespace AZ
                     msg = PassDistSystemInterface::Get()->DequeInputDataMsg();
                 }
                 MsgHead *msgHead = (MsgHead *)msg;
-                printf("SeverSendThread Deque message len %u\n", msgHead->msgLen);
+                printf("SeverSendThread Deque message len %u deque_oper buf %p\n", msgHead->msgLen, msg);
                 DumpMsg("send-pass.txt", (char *)msg, msgHead->msgLen);
                 uint32_t len = (uint32_t)write(cfd, msg, msgHead->msgLen);
                 if (len <= 0)
                 {
                     free(msg);
-                    printf("SeverSendThread send to client error!\n");
+                    printf("SeverSendThread send to client error free_oper buf %p!\n", msg);
                     break;
                 }
                 free(msg);
-                printf("SeverSendThread server send to client len %u\n", len);
+                printf("SeverSendThread server send to client len %u free_oper buf %p\n", len, msg);
             }
             close(cfd);
             printf("SeverSendThread socket send to client disconnected!\n");
@@ -682,6 +681,14 @@ namespace AZ
             conn.m_attachmentRef.m_attachment = "DepthLinear";
             passTemplate->m_connections.emplace_back(conn);
 
+            auto passData = AZStd::make_shared<CommPassData>();
+            passData->m_submit = false;
+            passData->m_cloneInput = false;
+            passData->m_splitCnt = 2;
+            passData->m_splitIdx = 0;
+            passData->m_commOper = CommOper::CopyInput;
+            passTemplate->m_passData = passData;
+
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
             return add;
@@ -701,6 +708,8 @@ namespace AZ
             auto passData = AZStd::make_shared<CommPassData>();
             passData->m_submit = false;
             passData->m_cloneInput = false;
+            passData->m_splitCnt = 2;
+            passData->m_splitIdx = 0;
             passData->m_commOper = CommOper::MergeOutput;
             passTemplate->m_passData = passData;
 
@@ -733,6 +742,14 @@ namespace AZ
             passHead->imgCnt = 3;
             pos += sizeof(MsgPassAttImg) * passHead->imgCnt;
             passHead->bufCnt = 0;
+
+            MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
+            commInfo->isCommPass = 1;
+            commInfo->commOper = (uint16_t)CommOper::PrepareInput;
+            commInfo->splitCnt = 2;
+            commInfo->splitIdx = 1;
+            passHead->commCnt = 1;
+            pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
 
             for (uint32_t i = 0; i < node->GetInputCount(); i++)
             {
@@ -832,6 +849,13 @@ namespace AZ
             }
 
             passHead->bufCnt = 0;
+            MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
+            commInfo->isCommPass = 0;
+            commInfo->commOper = (uint16_t)CommOper::None;
+            commInfo->splitCnt = 2;
+            commInfo->splitIdx = 1;
+            passHead->commCnt = 1;
+            pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
             passHead->CalcBodyLen();
             uint32_t totalLen = (uint32_t)(pos - buf);
 
@@ -864,6 +888,13 @@ namespace AZ
 
             passHead->imgCnt = 0;
             passHead->bufCnt = 0;
+            MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
+            commInfo->isCommPass = 1;
+            commInfo->commOper = (uint16_t)CommOper::CopyOutput;
+            commInfo->splitCnt = 2;
+            commInfo->splitIdx = 1;
+            passHead->commCnt = 1;
+            pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
             passHead->CalcBodyLen();
             uint32_t totalLen = (uint32_t)(pos - buf);
 
@@ -871,7 +902,7 @@ namespace AZ
         }
 
         uint32_t PassDistSystem::ParsePassAttrsMsg(void *passMsgStart, PassSlotList &slots, PassConnectionList &conns,
-            PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs)
+            PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs, MsgPassCommInfo &commInfo)
         {
             MsgPassGraph *passHead = (MsgPassGraph *)passMsgStart;
             char *pos = (char *)passHead + sizeof(MsgPassGraph);
@@ -939,6 +970,13 @@ namespace AZ
                 bufInfo++;
                 pos += sizeof(MsgPassAttBuf);
             }
+
+            MsgPassCommInfo *commInfoPtr = (MsgPassCommInfo *)pos;
+            for (int i = 0; i < passHead->commCnt; i++)
+            {
+                commInfo = *commInfoPtr;
+                pos += sizeof(MsgPassCommInfo);
+            }
             return 0;
         }
 
@@ -951,20 +989,23 @@ namespace AZ
             Name passName = Name(passHead->name);
             passTemplate->m_name = Name(passHead->passTemp);
             passTemplate->m_passClass = Name(passHead->passClass);
-
-            printf("Recv Pass %p, [%s] create from template [%s] class [%s]\n",
-                (void *)passHead, passHead->name, passHead->passTemp, passHead->passClass);
+            MsgPassCommInfo commInfo;
 
             ParsePassAttrsMsg((void *)passHead, passTemplate->m_slots, passTemplate->m_connections,
-                passTemplate->m_imageAttachments, passTemplate->m_bufferAttachments);
+                passTemplate->m_imageAttachments, passTemplate->m_bufferAttachments, commInfo);
 
-            if (passTemplate->m_passClass == Name("CommPass"))
+            printf("Recv Pass %p, [%s] create from template [%s] class [%s] comm pass %u oper %u\n",
+                (void *)passHead, passHead->name, passHead->passTemp, passHead->passClass,
+                commInfo.isCommPass, commInfo.commOper);
+
+            if (commInfo.isCommPass)
             {
                 auto passData = AZStd::make_shared<CommPassData>();
                 passData->m_cloneInput = false;
-                passData->m_commOper = CommOper::CopyOutput;
                 passData->m_submit = false;
-                //passData->m_bufferDestinationBytesPerRow = imgDesc.m_size.m_width * RHI::GetFormatSize(imgDesc.m_format);
+                passData->m_splitCnt = commInfo.splitCnt;
+                passData->m_splitIdx = commInfo.splitIdx;
+                passData->m_commOper = (CommOper)commInfo.commOper;
                 passTemplate->m_passData = passData;
             }
 
@@ -984,12 +1025,24 @@ namespace AZ
             PassSlotList slots;
             req->m_passName = Name(passHead->name);
             req->m_templateName = Name(passHead->passTemp);
-
-            printf("Recv Pass [%s] create from request template [%s]\n",
-                passHead->name, passHead->passTemp);
+            MsgPassCommInfo commInfo;
 
             ParsePassAttrsMsg((void *)passHead, slots, req->m_connections,
-                req->m_imageAttachmentOverrides, req->m_bufferAttachmentOverrides);
+                req->m_imageAttachmentOverrides, req->m_bufferAttachmentOverrides, commInfo);
+
+            printf("Recv Pass [%s] create from request template [%s] comm pass %u oper %u\n",
+                passHead->name, passHead->passTemp, commInfo.isCommPass, commInfo.commOper);
+
+            if (commInfo.isCommPass)
+            {
+                auto passData = AZStd::make_shared<CommPassData>();
+                passData->m_cloneInput = false;
+                passData->m_submit = false;
+                passData->m_splitCnt = commInfo.splitCnt;
+                passData->m_splitIdx = commInfo.splitIdx;
+                passData->m_commOper = (CommOper)commInfo.commOper;
+                req->m_passData = passData;
+            }
 
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req.get());
             return add;
@@ -1188,6 +1241,7 @@ namespace AZ
             std::string  distName = orig + "_Dist";
             std::string  afterName = orig + "_DistAfter";
             char *buf = (char *)malloc(10240);
+            printf("CloneFullscreenShadow alloc_oper buf %p\n", buf);
             //memset(buf, 0xff, 10240);
             MsgHead *msgHead = (MsgHead *)buf;
             int cur = sizeof(MsgHead);
@@ -1200,6 +1254,7 @@ namespace AZ
             cur += CreateFullscreenShadowDistAfterPassMsg(buf + cur, 10240 - cur, Name(afterName.c_str()), Name(distName.c_str()));
             printf("CreateFullscreenShadowDistAfterPassMsg encode len %d\n", cur);
             msgHead->msgLen = cur;
+            printf("CloneFullscreenShadow enque_oper buf %p\n", buf);
             EnquePassMsg((void *)buf);
             printf("enque pass message len %u ticket %ld\n", cur, msgHead->ticket);
             DumpMsg("pack.txt", buf, msgHead->msgLen);

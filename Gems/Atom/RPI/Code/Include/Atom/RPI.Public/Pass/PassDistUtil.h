@@ -64,13 +64,23 @@ namespace AZ
             char name[PASS_NAME_MAX];
         };
 
+        struct MsgPassCommInfo
+        {
+            uint16_t isCommPass = false;
+            uint16_t commOper = 0;
+            uint16_t splitCnt = 0;
+            uint16_t splitIdx = 0;
+        };
+
         struct MsgPassGraph {
             uint32_t passLen;
             uint32_t createType;
-            uint16_t slotCnt;
-            uint16_t connCnt;
-            uint16_t imgCnt;
-            uint16_t bufCnt;
+            uint8_t slotCnt;
+            uint8_t connCnt;
+            uint8_t imgCnt;
+            uint8_t bufCnt;
+            uint8_t commCnt;
+            uint8_t reserv[3];
             char pipeline[PASS_NAME_MAX];
             char name[PASS_NAME_MAX];
             char passTemp[PASS_NAME_MAX];
@@ -81,7 +91,8 @@ namespace AZ
                     + sizeof(MsgPassSlot) * slotCnt
                     + sizeof(MsgPassConn) * connCnt
                     + sizeof(MsgPassAttImg) * imgCnt
-                    + sizeof(MsgPassAttBuf) * bufCnt;
+                    + sizeof(MsgPassAttBuf) * bufCnt
+                    + sizeof(MsgPassCommInfo) * commCnt;
             }
         };
 

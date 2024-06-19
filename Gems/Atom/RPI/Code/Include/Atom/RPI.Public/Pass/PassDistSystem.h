@@ -22,6 +22,8 @@
 
 #include <AzFramework/Windowing/WindowBus.h>
 
+#include <Atom/RPI.Public/Pass/PassDistUtil.h>
+
 #include <pthread.h>
 
 namespace AZ
@@ -54,7 +56,7 @@ namespace AZ
                     (void)pthread_cond_wait(&m_cond, &m_mutex);
                 }   
                 data = m_dataQue[m_readItr % MAX_QUE_LEN];
-                //printf("P_oper buf %p read %ld que %p\n", data, m_readItr, (void*)this);
+                //printf("P_oper buf %p read %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
                 m_readItr++;
                 pthread_mutex_unlock(&m_mutex);
                 return data;
@@ -62,8 +64,20 @@ namespace AZ
             void V(void *data)
             {
                 pthread_mutex_lock(&m_mutex);
+                if (m_writeItr - m_writeItr > MAX_QUE_LEN / 8)
+                {
+                    printf("QUE_INFO: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
+                }
+                else if (m_writeItr - m_writeItr > MAX_QUE_LEN / 2)
+                {
+                    printf("QUE_WARN: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
+                }
+                else if (m_writeItr - m_writeItr > MAX_QUE_LEN )
+                {
+                    printf("QUE_ERROR: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
+                }
                 m_dataQue[m_writeItr % MAX_QUE_LEN] = data;
-                //printf("V_oper buf %p write %ld que %p\n", data, m_writeItr, (void*)this);
+                //printf("V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
                 m_writeItr++;
                 pthread_cond_signal(&m_cond);
                 pthread_mutex_unlock(&m_mutex);
@@ -124,7 +138,7 @@ namespace AZ
             uint32_t CreateFullscreenShadowDistAfterPassMsg(char *buf, uint32_t len, Name name, Name prePassName);
 
             uint32_t ParsePassAttrsMsg(void *passMsgStart, PassSlotList &slots, PassConnectionList &conns,
-                PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs);
+                PassImageAttachmentDescList &imgs, PassBufferAttachmentDescList &bufs, MsgPassCommInfo &commInfo);
 
             Ptr<Pass> PassCreateFromTemplateMsg(char *buf, uint32_t len);
 

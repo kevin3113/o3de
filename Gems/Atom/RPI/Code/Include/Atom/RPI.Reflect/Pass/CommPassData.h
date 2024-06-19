@@ -39,7 +39,9 @@ namespace AZ
 
             bool m_cloneInput = false;
 
-            uint32_t m_splitCnt = 1;
+            uint16_t m_splitCnt = 1;
+
+            uint16_t m_splitIdx = 0;
 
             // Whether the pass should use the copy queue.
             bool m_useCopyQueue = false;
