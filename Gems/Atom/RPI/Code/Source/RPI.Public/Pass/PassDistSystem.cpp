@@ -256,13 +256,14 @@ namespace AZ
                 printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
                 return -1;
             }
-            printf("RecvOneMsg recv message type %u len %u\n", msgHead.msgType, msgHead.msgLen);
+            printf("RecvOneMsg recv message type %u len %u ticket %ld\n", msgHead.msgType, msgHead.msgLen, msgHead.ticket);
             if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
             {
                 printf("RecvOneMsg recv invalid message!\n");
                 return -1;
             }
             char *buf = (char *)malloc(msgHead.msgLen);
+            printf("RecvOneMsg recv message alloc_oper buf %p\n", buf);
             memcpy(buf, &msgHead, sizeof(MsgHead));
             uint32_t curLen = sizeof(MsgHead);
             while (curLen < msgHead.msgLen)
@@ -271,7 +272,7 @@ namespace AZ
                 if (numRead <= 0)
                 {
                     free(buf);
-                    printf("RecvOneMsg recv data error message body!\n");
+                    printf("RecvOneMsg recv data error message body free_oper buf %p!\n", buf);
                     return -1;
                 }
                 curLen += (uint32_t)numRead;
@@ -279,7 +280,7 @@ namespace AZ
             if (curLen != msgHead.msgLen)
             {
                 free(buf);
-                printf("RecvOneMsg recv data error message len %u!\n", curLen);
+                printf("RecvOneMsg recv data error message len %u free_oper buf %p!\n", curLen, buf);
                 return -1;
             }
             *msg = buf;
@@ -380,12 +381,13 @@ namespace AZ
             const char *msg = "client send msg ...............\n";
             MsgHead *msgHead = (MsgHead *)buf;
             msgHead->msgType = (uint32_t)DistMsgType::Debug;
+            msgHead->ticket = m_ticket;
             MsgDebugInfo *debugInfo = (MsgDebugInfo *)(buf + sizeof(MsgHead));
             debugInfo->nodeId = 1;
             debugInfo->infoLen = strnlen(msg, 256) + 1 + sizeof(MsgDebugInfo);
             strncpy(buf + sizeof(MsgHead) + sizeof(MsgDebugInfo), msg, 256 - sizeof(MsgHead) - sizeof(MsgDebugInfo));
             msgHead->msgLen = debugInfo->infoLen + sizeof(MsgHead);
-            printf("PassDistSystem::Send reply msg type %u, len %u\n", msgHead->msgType, msgHead->msgLen);
+            printf("PassDistSystem::Send reply msg type %u, len %u ticket %ld\n", msgHead->msgType, msgHead->msgLen, msgHead->ticket);
             if (write(sfd, buf, msgHead->msgLen) != msgHead->msgLen)
             {
                 printf("PassDistSystem::Send partial/failed write error!\n");
@@ -404,16 +406,24 @@ namespace AZ
             }
             else
             {
-                msg = (char *)DequeOutputDataMsg();
+                if (m_sendFailMsg)
+                {
+                    msg = (char *)m_sendFailMsg;
+                }
+                else
+                {
+                    msg = (char *)DequeOutputDataMsg();
+                }
             }
             MsgHead *msgHead = (MsgHead *)msg;
             if (write(sfd, msg, msgHead->msgLen) != msgHead->msgLen)
             {
                 printf("PassDistSystem::SendQue partial/failed write error!\n");
-                free(msg);
+                m_sendFailMsg = msg;
                 return -1;
             }
-            printf("PassDistSystem::SendQue success!\n");
+            m_sendFailMsg = nullptr;
+            printf("PassDistSystem::SendQue msg %p len %u ticket %ld success!\n", msg, msgHead->msgLen, msgHead->ticket);
             free(msg);
             return 0;
         }
@@ -430,8 +440,7 @@ namespace AZ
             msgHead = (MsgHead *)msg;
             if (msgHead->msgType == (uint32_t)DistMsgType::PassGraph)
             {
-                MsgPassGraph *passMsg = (MsgPassGraph *)(msg + sizeof(MsgHead));
-                printf("PassDistSystem::Recv recv pass graph len %u\n", passMsg->passLen);
+                printf("PassDistSystem::Recv recv pass graph len %u enque_oper buf %p\n", msgHead->msgLen, msg);
                 EnquePassMsg((void *)msg);
                 return 0;
             }
@@ -442,7 +451,15 @@ namespace AZ
                 printf("PassDistSystem::Recv recv pass data len %u, node %u\n", passData->dataLen, passData->nodeId);
                 if (m_isServer)
                 {
-                    EnqueOutputDataMsg((void *)msg);
+                    if (msgHead->ticket == m_ticket)
+                    {
+                        EnqueOutputDataMsg((void *)msg);
+                    }
+                    else
+                    {
+                        printf("PassDistSystem::Recv recv pass data ticket %ld != cur %ld\n", msgHead->ticket, m_ticket);
+                        free(msg);
+                    }
                 }
                 else
                 {
@@ -461,6 +478,8 @@ namespace AZ
             {
                 printf("PassDistSystem::Recv recv invalid message type %u\n", msgHead->msgType);
             }
+
+            printf("PassDistSystem::Recv end proce free_oper buf %p\n", msg);
 
             free(msg);
 
@@ -523,6 +542,7 @@ namespace AZ
             MsgHead *msgHead = (MsgHead *)msg;
             msgHead->msgType = (uint32_t)DistMsgType::PassData;
             msgHead->msgLen = totalLen;
+            msgHead->ticket = m_ticket;
             uint32_t curPos = sizeof(MsgHead);
             for (uint32_t msgCnt = 0; msgCnt < count; msgCnt++)
             {
@@ -547,8 +567,8 @@ namespace AZ
             {
                 EnqueOutputDataMsg((void *)msg);
             }
-            printf("PassDistSystem::SendData cur is server %d put msg len %u count %u\n", 
-                (int)m_isServer, totalLen, count);
+            printf("PassDistSystem::SendData cur is server %d put msg len %u count %u ticket %ld\n", 
+                (int)m_isServer, totalLen, count, msgHead->ticket);
             return 0;
         }
 
@@ -959,8 +979,8 @@ namespace AZ
             char *pos = buf;
             MsgPassGraph *passHead = (MsgPassGraph *)pos;
             pos += sizeof(MsgPassGraph);
-
-            PassRequest *req = aznew PassRequest();
+            AZStd::shared_ptr<PassRequest> req = AZStd::make_shared<PassRequest>();
+            m_requests.emplace_back(req);
             PassSlotList slots;
             req->m_passName = Name(passHead->name);
             req->m_templateName = Name(passHead->passTemp);
@@ -971,7 +991,7 @@ namespace AZ
             ParsePassAttrsMsg((void *)passHead, slots, req->m_connections,
                 req->m_imageAttachmentOverrides, req->m_bufferAttachmentOverrides);
 
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req);
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req.get());
             return add;
             //return nullptr;
         }
@@ -1076,6 +1096,15 @@ namespace AZ
             }
         }
 
+        bool NameStartWith(const Name name, const char *start)
+        {
+            char *subStr = strstr((char *)name.GetCStr(), start);
+            if (!subStr || subStr != (char *)name.GetCStr()) {
+                return false;
+            }
+            return true;
+        }
+
         bool NameEndWith(const Name name, const char *end)
         {
             char *subStr = strstr((char *)name.GetCStr(), end);
@@ -1163,6 +1192,7 @@ namespace AZ
             MsgHead *msgHead = (MsgHead *)buf;
             int cur = sizeof(MsgHead);
             msgHead->msgType = (uint32_t)DistMsgType::PassGraph;
+            msgHead->ticket = m_ticket;
             cur += CreateFullscreenShadowDistPrePassMsg(buf + cur, 10240 - cur, Name(preName.c_str()), pass);
             printf("CreateFullscreenShadowDistPrePassMsg encode len %d\n", cur);
             cur += CreateFullscreenShadowDistPassMsg(buf + cur, 10240 - cur, Name(distName.c_str()), Name(preName.c_str()), pass);
@@ -1171,7 +1201,7 @@ namespace AZ
             printf("CreateFullscreenShadowDistAfterPassMsg encode len %d\n", cur);
             msgHead->msgLen = cur;
             EnquePassMsg((void *)buf);
-            printf("enque pass message len %u\n", cur);
+            printf("enque pass message len %u ticket %ld\n", cur, msgHead->ticket);
             DumpMsg("pack.txt", buf, msgHead->msgLen);
         }
 
@@ -1191,9 +1221,11 @@ namespace AZ
 
         void PassDistSystem::ModifyDistPassGraph(Ptr<ParentPass> &root)
         {
-            printf("ModifyDistPassGraph pipeline [%s] root pass [%s]\n",
+            m_ticket = RPISystemInterface::Get()->GetCurrentTick();
+
+            printf("ModifyDistPassGraph pipeline [%s] root pass [%s] ticket %ld\n",
                 root->GetRenderPipeline()->GetId().GetCStr(),
-                root->GetName().GetCStr());
+                root->GetName().GetCStr(), m_ticket);
 
             AZStd::unordered_map<Name, Ptr<Pass>> subPasses;
             AZStd::vector<std::function<void()>> procs;
@@ -1224,14 +1256,19 @@ namespace AZ
         void PassDistSystem::BuildDistPassGraph(Ptr<ParentPass> &root)
         {
             root->RemoveChildren();
+            m_templates.clear();
+            m_requests.clear();
             void *msg = DequePassMsg(true);
             if (msg)
             {
                 MsgHead *msgHead = (MsgHead *)msg;
-                printf("BuildDistPassGraph deque pass message len %u\n", msgHead->msgLen);
+                m_ticket = msgHead->ticket;
+                printf("BuildDistPassGraph deque pass message len %u deque_oper buf %p\n", msgHead->msgLen, msg);
                 DumpMsg("proc.txt", (char *)msg, msgHead->msgLen);
 
                 ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead), root);
+
+                printf("BuildDistPassGraph after proc pass message len %u free_oper buf %p\n", msgHead->msgLen, msg);
                 free(msg);
                 printf("### Test pipeline started server %d pass number 3!\n", (int)m_isServer);
             }
@@ -1250,9 +1287,17 @@ namespace AZ
             }
             if (m_isServer)
             {
-                printf("PassDistSystem Server ModifyDistPassGraph pipeline [%s]\n",
-                    root->GetRenderPipeline()->GetId().GetCStr());
-                ModifyDistPassGraph(root);
+                if (NameStartWith(root->GetRenderPipeline()->GetId(), "MainPipeline"))
+                {
+                    printf("PassDistSystem Server ModifyDistPassGraph pipeline [%s]\n",
+                        root->GetRenderPipeline()->GetId().GetCStr());
+                    ModifyDistPassGraph(root);
+                }
+                else
+                {
+                    printf("PassDistSystem Server ModifyDistPassGraph pipeline [%s] no need modify!\n",
+                        root->GetRenderPipeline()->GetId().GetCStr());
+                }
             }
             else
             {

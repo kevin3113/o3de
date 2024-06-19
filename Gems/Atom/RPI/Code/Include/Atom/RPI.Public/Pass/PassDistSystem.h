@@ -54,6 +54,7 @@ namespace AZ
                     (void)pthread_cond_wait(&m_cond, &m_mutex);
                 }   
                 data = m_dataQue[m_readItr % MAX_QUE_LEN];
+                //printf("P_oper buf %p read %ld que %p\n", data, m_readItr, (void*)this);
                 m_readItr++;
                 pthread_mutex_unlock(&m_mutex);
                 return data;
@@ -62,6 +63,7 @@ namespace AZ
             {
                 pthread_mutex_lock(&m_mutex);
                 m_dataQue[m_writeItr % MAX_QUE_LEN] = data;
+                //printf("V_oper buf %p write %ld que %p\n", data, m_writeItr, (void*)this);
                 m_writeItr++;
                 pthread_cond_signal(&m_cond);
                 pthread_mutex_unlock(&m_mutex);
@@ -194,6 +196,8 @@ namespace AZ
 
             AZStd::vector<AZStd::shared_ptr<PassTemplate>> m_templates;
 
+            AZStd::vector<AZStd::shared_ptr<PassRequest>> m_requests;
+
             AZStd::unordered_map<int, RenderPipelinePtr> m_devPipelines;
 
             Name m_activePipeline;
@@ -207,6 +211,10 @@ namespace AZ
             Name m_commPath;
 
             int m_sfd = -1;
+
+            uint64_t m_ticket = 0;
+
+            void *m_sendFailMsg = nullptr;
 
             WaitQueue m_msgQue;
 

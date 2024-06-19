@@ -31,6 +31,7 @@ namespace AZ
         struct MsgHead {
             uint32_t msgLen;
             uint32_t msgType;
+            uint64_t ticket;
         };
 
         struct MsgPassSlot {
