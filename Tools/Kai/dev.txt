@@ -153,10 +153,13 @@ CLayoutWnd::BindViewport(CLayoutViewPane*, QString const&, QWidget*)
 CLayoutWnd::MaximizeViewport(int)
 CLayoutWnd::LoadConfig()
 [bt] #13 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow17InitCentralWidgetEv+0x174) [0x7f112fdb02b4]
+MainWindow::InitCentralWidget()
 [bt] #14 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN10MainWindow10InitializeEv+0x80) [0x7f112fdb3490]
+MainWindow::Initialize()
 [bt] #15 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(_ZN11CCryEditApp12InitInstanceEv+0x8f8) [0x7f112fe15f98]
+CCryEditApp::InitInstance()
 [bt] #16 /home/kai/o3deprj/O3DE/Projects/MyProject/build/linux/bin/release/libEditorLib.so(CryEditMain+0x47e) [0x7f112fe19dbe]
-
+CryEditMain
 
 AZ::RPI::Scene::AddRenderPipeline(AZStd::shared_ptr<AZ::RPI::RenderPipeline>)
 AZ::Render::Bootstrap::BootstrapSystemComponent::LoadPipeline(AZStd::shared_ptr<AZ::RPI::Scene>, AZStd::shared_ptr<AZ::RPI::ViewportContext>, AZStd::basic_string_view<char, AZStd::char_traits<char> >, AZ::RPI::ViewType, AZ::RHI::MultisampleState&)

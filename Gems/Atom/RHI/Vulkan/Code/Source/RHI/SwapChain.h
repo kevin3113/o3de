@@ -120,6 +120,8 @@ namespace AZ
                 VkImageMemoryBarrier m_barrier = {};
                 bool m_isValid = false;
             } m_swapChainBarrier;
+
+            bool m_enabled = true;
         };
     }
 }

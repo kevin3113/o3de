@@ -39,7 +39,13 @@ namespace AZ
 
         RHI::Ptr<SwapChain> SwapChain::Create()
         {
-            return aznew SwapChain();
+            SwapChain* swapChain = aznew SwapChain();
+            char *dist = getenv("DIST_PIPE");
+            if (dist)
+            {
+                swapChain->m_enabled = false;
+            }
+            return swapChain;
         }
 
         VkSwapchainKHR SwapChain::GetNativeSwapChain() const
@@ -109,6 +115,10 @@ namespace AZ
         {
             RHI::ResultCode result = RHI::ResultCode::Success;
             RHI::DeviceObject::Init(baseDevice);
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
 
             auto& device = static_cast<Device&>(GetDevice());
             m_dimensions = descriptor.m_dimensions;
@@ -148,6 +158,10 @@ namespace AZ
 
         void SwapChain::ShutdownInternal()
         {
+            if (!m_enabled)
+            {
+                return;
+            }
             //Nothing to clean as all the native objects for xr swapchain is handles by xr modules
             if (GetDescriptor().m_isXrSwapChain)
             {
@@ -169,6 +183,10 @@ namespace AZ
             Image* image = static_cast<Image*>(request.m_image);
             RHI::ImageDescriptor imageDesc = request.m_descriptor;
             RHI::ResultCode result = RHI::ResultCode::Success;
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
 
             // XR swapchains will retrieve the native swapchain image from xr system where as non-xr
             // swapchains will use the images created internally (i.e RHI::Vulkan)
@@ -209,6 +227,10 @@ namespace AZ
             VkSwapchainKHR oldSwapchain = m_nativeSwapChain;
             auto& device = static_cast<Device&>(GetDevice());
             m_dimensions = dimensions;
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
 
             auto& presentationQueue = device.GetCommandQueueContext().GetOrCreatePresentationCommandQueue(*this);
             m_presentationQueue = &presentationQueue;
@@ -234,6 +256,10 @@ namespace AZ
 
         uint32_t SwapChain::PresentInternal()
         {
+            if (!m_enabled)
+            {
+                return 0;
+            }
             // No need to present a xr swapchain
             if (GetDescriptor().m_isXrSwapChain)
             {
@@ -397,6 +423,11 @@ namespace AZ
 
         VkPresentModeKHR SwapChain::GetSupportedPresentMode(uint32_t verticalSyncInterval) const
         {
+            if (!m_enabled)
+            {
+                return VK_PRESENT_MODE_FIFO_KHR;
+            }
+
             AZ_Assert(m_surface, "Surface has not been initialized.");
 
             if (verticalSyncInterval > 0)
@@ -471,6 +502,11 @@ namespace AZ
 
         RHI::ResultCode SwapChain::BuildNativeSwapChain(const RHI::SwapChainDimensions& dimensions)
         {
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
+
             AZ_Assert(m_surface, "Surface is null.");
 
             if (!ValidateSurfaceDimensions(dimensions))
@@ -532,6 +568,10 @@ namespace AZ
 
         RHI::ResultCode SwapChain::AcquireNewImage(uint32_t* acquiredImageIndex)
         {
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
             auto& device = static_cast<Device&>(GetDevice());
             auto& semaphoreAllocator = device.GetSemaphoreAllocator();
             Semaphore* imageAvailableSemaphore = semaphoreAllocator.Allocate();
@@ -568,6 +608,10 @@ namespace AZ
 
         void SwapChain::InvalidateNativeSwapChain(VkSwapchainKHR swapchain)
         {
+            if (!m_enabled)
+            {
+                return;
+            }
             auto& device = static_cast<Device&>(GetDevice());
             auto presentCommand = [&device, swapchain]([[maybe_unused]] void* queue)
             {
@@ -584,6 +628,11 @@ namespace AZ
 
         RHI::ResultCode SwapChain::CreateSwapchain()
         {
+            if (!m_enabled)
+            {
+                return RHI::ResultCode::Success;
+            }
+
             auto& device = static_cast<Device&>(GetDevice());
 
             m_surfaceCapabilities = GetSurfaceCapabilities();
