@@ -12,6 +12,7 @@
 #include <Atom/RHI.Reflect/Origin.h>
 
 #include <Atom/RPI.Reflect/Pass/PassData.h>
+#include <Atom/RPI.Public/Pass/PassDistUtil.h>
 
 namespace AZ
 {
@@ -39,9 +40,7 @@ namespace AZ
 
             bool m_cloneInput = false;
 
-            uint16_t m_splitCnt = 1;
-
-            uint16_t m_splitIdx = 0;
+            SplitInfo m_splitInfo;
 
             // Whether the pass should use the copy queue.
             bool m_useCopyQueue = false;

@@ -175,9 +175,11 @@ namespace AZ
                 void *buf[8];
                 uint32_t len[8];
                 uint32_t count = 0;
+                SplitInfo splitInfo;
                 printf("CommPass %s enter recv data message \n", GetName().GetCStr());
-                int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count);
-                printf("CommPass %s recv data message count %u ret %d\n", GetName().GetCStr(), count, ret);
+                int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count, splitInfo);
+                printf("CommPass %s recv data message count %u ret %d index %u\n",
+                    GetName().GetCStr(), count, ret, splitInfo.m_splitIdx);
                 for (int i = 0; i < count && i < 8; i++)
                 {
                     printf("CommPass recv data message %p len %u\n", buf[i], len[i]);
@@ -209,8 +211,11 @@ namespace AZ
                 memset(buf, 0x5a, 1024);
                 data[0] = buf;
                 len[0] = 1024;
-                int ret = PassDistSystemInterface::Get()->SendData(data, len, 1);
-                printf("CommPass %s send data message ret %d\n", GetName().GetCStr(), ret);
+                SplitInfo splitInfo;
+                splitInfo.m_splitCnt = m_data.m_splitInfo.m_splitCnt;
+                splitInfo.m_splitIdx = 1;
+                int ret = PassDistSystemInterface::Get()->SendData(data, len, 1, splitInfo);
+                printf("CommPass %s send data message ret %d index %u\n", GetName().GetCStr(), ret, splitInfo.m_splitIdx);
             }
         }
 

@@ -70,7 +70,16 @@ namespace AZ
         void PassDistSystem::Init()
         {
             Interface<PassDistSystemInterface>::Register(this);
-            
+            char *value = getenv("SPLIT");
+            if (value)
+            {
+                int count = atoi(value);
+                if (count > 1)
+                {
+                    m_splitInfo.m_splitCnt = (uint16_t)count;
+                    printf("PassDistSystem::Init update split count %u\n", m_splitInfo.m_splitCnt);
+                }
+            }
         }
 
         void PassDistSystem::Shutdown()
@@ -255,7 +264,9 @@ namespace AZ
                 printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
                 return -1;
             }
-            printf("RecvOneMsg recv message type %u len %u ticket %ld\n", msgHead.msgType, msgHead.msgLen, msgHead.ticket);
+            printf("RecvOneMsg recv message type %u len %u ticket %ld splitCnt %u splitIdx %u\n",
+                msgHead.msgType, msgHead.msgLen, msgHead.ticket,
+                msgHead.splitInfo.m_splitCnt, msgHead.splitInfo.m_splitIdx);
             if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
             {
                 printf("RecvOneMsg recv invalid message!\n");
@@ -381,6 +392,8 @@ namespace AZ
             MsgHead *msgHead = (MsgHead *)buf;
             msgHead->msgType = (uint32_t)DistMsgType::Debug;
             msgHead->ticket = m_ticket;
+            msgHead->splitInfo.m_splitCnt = 0;
+            msgHead->splitInfo.m_splitIdx = 0;
             MsgDebugInfo *debugInfo = (MsgDebugInfo *)(buf + sizeof(MsgHead));
             debugInfo->nodeId = 1;
             debugInfo->infoLen = strnlen(msg, 256) + 1 + sizeof(MsgDebugInfo);
@@ -530,7 +543,7 @@ namespace AZ
             m_dataOutputQue.V(data);
         }
 
-        int PassDistSystem::SendData(void *data[], uint32_t len[], uint32_t count)
+        int PassDistSystem::SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo)
         {
             uint32_t totalLen = sizeof(MsgHead);
             for (uint32_t msgCnt = 0; msgCnt < count; msgCnt++)
@@ -541,6 +554,8 @@ namespace AZ
             MsgHead *msgHead = (MsgHead *)msg;
             msgHead->msgType = (uint32_t)DistMsgType::PassData;
             msgHead->msgLen = totalLen;
+            msgHead->splitInfo.m_splitCnt = splitInfo.m_splitCnt;
+            msgHead->splitInfo.m_splitIdx = splitInfo.m_splitIdx;
             msgHead->ticket = m_ticket;
             uint32_t curPos = sizeof(MsgHead);
             for (uint32_t msgCnt = 0; msgCnt < count; msgCnt++)
@@ -566,12 +581,12 @@ namespace AZ
             {
                 EnqueOutputDataMsg((void *)msg);
             }
-            printf("PassDistSystem::SendData cur is server %d put msg len %u count %u ticket %ld\n", 
-                (int)m_isServer, totalLen, count, msgHead->ticket);
+            printf("PassDistSystem::SendData cur is server %d put msg len %u count %u ticket %ld splitCnt %u splitIdx %u\n", 
+                (int)m_isServer, totalLen, count, msgHead->ticket, splitInfo.m_splitCnt, splitInfo.m_splitIdx);
             return 0;
         }
 
-        int PassDistSystem::RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count)
+        int PassDistSystem::RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count, SplitInfo &splitInfo)
         {
             char *msg;
             printf("PassDistSystem::RecvData wait for data count %u\n", size);
@@ -598,8 +613,11 @@ namespace AZ
                 curPos += len[msgCnt];
                 msgCnt++;
             }
+            splitInfo.m_splitCnt = msgHead->splitInfo.m_splitCnt;
+            splitInfo.m_splitIdx = msgHead->splitInfo.m_splitIdx;
             *count = msgCnt;
-            printf("PassDistSystem::RecvData input size %u total recv data count %u\n", size, msgCnt);
+            printf("PassDistSystem::RecvData input size %u splitCnt %u splitIdx %u total recv data count %u\n",
+                size, splitInfo.m_splitCnt, splitInfo.m_splitIdx, msgCnt);
             if (curPos != msgHead->msgLen)
             {
                 printf("PassDistSystem::RecvData error cur msg pos %u != msg len %u\n",
@@ -684,8 +702,8 @@ namespace AZ
             auto passData = AZStd::make_shared<CommPassData>();
             passData->m_submit = false;
             passData->m_cloneInput = false;
-            passData->m_splitCnt = 2;
-            passData->m_splitIdx = 0;
+            passData->m_splitInfo.m_splitCnt = m_splitInfo.m_splitCnt;
+            passData->m_splitInfo.m_splitIdx = 0;
             passData->m_commOper = CommOper::CopyInput;
             passTemplate->m_passData = passData;
 
@@ -708,8 +726,8 @@ namespace AZ
             auto passData = AZStd::make_shared<CommPassData>();
             passData->m_submit = false;
             passData->m_cloneInput = false;
-            passData->m_splitCnt = 2;
-            passData->m_splitIdx = 0;
+            passData->m_splitInfo.m_splitCnt = m_splitInfo.m_splitCnt;
+            passData->m_splitInfo.m_splitIdx = 0;
             passData->m_commOper = CommOper::MergeOutput;
             passTemplate->m_passData = passData;
 
@@ -746,8 +764,6 @@ namespace AZ
             MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
             commInfo->isCommPass = 1;
             commInfo->commOper = (uint16_t)CommOper::PrepareInput;
-            commInfo->splitCnt = 2;
-            commInfo->splitIdx = 1;
             passHead->commCnt = 1;
             pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
 
@@ -852,8 +868,6 @@ namespace AZ
             MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
             commInfo->isCommPass = 0;
             commInfo->commOper = (uint16_t)CommOper::None;
-            commInfo->splitCnt = 2;
-            commInfo->splitIdx = 1;
             passHead->commCnt = 1;
             pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
             passHead->CalcBodyLen();
@@ -891,8 +905,6 @@ namespace AZ
             MsgPassCommInfo *commInfo = (MsgPassCommInfo *)pos;
             commInfo->isCommPass = 1;
             commInfo->commOper = (uint16_t)CommOper::CopyOutput;
-            commInfo->splitCnt = 2;
-            commInfo->splitIdx = 1;
             passHead->commCnt = 1;
             pos += sizeof(MsgPassCommInfo) * passHead->commCnt;
             passHead->CalcBodyLen();
@@ -1003,8 +1015,8 @@ namespace AZ
                 auto passData = AZStd::make_shared<CommPassData>();
                 passData->m_cloneInput = false;
                 passData->m_submit = false;
-                passData->m_splitCnt = commInfo.splitCnt;
-                passData->m_splitIdx = commInfo.splitIdx;
+                passData->m_splitInfo.m_splitCnt = m_splitInfo.m_splitCnt;
+                passData->m_splitInfo.m_splitIdx = m_splitInfo.m_splitIdx;
                 passData->m_commOper = (CommOper)commInfo.commOper;
                 passTemplate->m_passData = passData;
             }
@@ -1038,8 +1050,8 @@ namespace AZ
                 auto passData = AZStd::make_shared<CommPassData>();
                 passData->m_cloneInput = false;
                 passData->m_submit = false;
-                passData->m_splitCnt = commInfo.splitCnt;
-                passData->m_splitIdx = commInfo.splitIdx;
+                passData->m_splitInfo.m_splitCnt = m_splitInfo.m_splitCnt;
+                passData->m_splitInfo.m_splitIdx = m_splitInfo.m_splitIdx;
                 passData->m_commOper = (CommOper)commInfo.commOper;
                 req->m_passData = passData;
             }
@@ -1247,6 +1259,8 @@ namespace AZ
             int cur = sizeof(MsgHead);
             msgHead->msgType = (uint32_t)DistMsgType::PassGraph;
             msgHead->ticket = m_ticket;
+            msgHead->splitInfo.m_splitCnt = m_splitInfo.m_splitCnt;
+            msgHead->splitInfo.m_splitIdx = 0;
             cur += CreateFullscreenShadowDistPrePassMsg(buf + cur, 10240 - cur, Name(preName.c_str()), pass);
             printf("CreateFullscreenShadowDistPrePassMsg encode len %d\n", cur);
             cur += CreateFullscreenShadowDistPassMsg(buf + cur, 10240 - cur, Name(distName.c_str()), Name(preName.c_str()), pass);
@@ -1313,10 +1327,14 @@ namespace AZ
             root->RemoveChildren();
             m_templates.clear();
             m_requests.clear();
+            m_splitInfo.m_splitCnt = 0;
+            m_splitInfo.m_splitIdx = 0;
             void *msg = DequePassMsg(true);
             if (msg)
             {
                 MsgHead *msgHead = (MsgHead *)msg;
+                m_splitInfo.m_splitCnt = msgHead->splitInfo.m_splitCnt;
+                m_splitInfo.m_splitIdx = msgHead->splitInfo.m_splitIdx;
                 m_ticket = msgHead->ticket;
                 printf("BuildDistPassGraph deque pass message len %u deque_oper buf %p\n", msgHead->msgLen, msg);
                 DumpMsg("proc.txt", (char *)msg, msgHead->msgLen);

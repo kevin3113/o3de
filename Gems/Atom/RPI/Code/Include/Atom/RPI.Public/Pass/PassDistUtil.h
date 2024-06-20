@@ -28,9 +28,16 @@ namespace AZ
             Count
         };
 
+        struct SplitInfo {
+            uint16_t m_splitCnt = 2;
+            uint16_t m_splitIdx = 0;
+        };
+
         struct MsgHead {
             uint32_t msgLen;
             uint32_t msgType;
+            SplitInfo splitInfo;
+            uint32_t pad;
             uint64_t ticket;
         };
 
@@ -68,8 +75,6 @@ namespace AZ
         {
             uint16_t isCommPass = false;
             uint16_t commOper = 0;
-            uint16_t splitCnt = 0;
-            uint16_t splitIdx = 0;
         };
 
         struct MsgPassGraph {

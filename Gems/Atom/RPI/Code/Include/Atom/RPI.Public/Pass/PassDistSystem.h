@@ -22,8 +22,6 @@
 
 #include <AzFramework/Windowing/WindowBus.h>
 
-#include <Atom/RPI.Public/Pass/PassDistUtil.h>
-
 #include <pthread.h>
 
 namespace AZ
@@ -182,9 +180,9 @@ namespace AZ
 
             void EnqueOutputDataMsg(void *data) override;
 
-            int SendData(void *data[], uint32_t len[], uint32_t count) override;
+            int SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo) override;
 
-            int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count) override;
+            int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count, SplitInfo &splitInfo) override;
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
@@ -225,6 +223,9 @@ namespace AZ
             Name m_commPath;
 
             int m_sfd = -1;
+
+            // dist node only
+            SplitInfo m_splitInfo;
 
             uint64_t m_ticket = 0;
 

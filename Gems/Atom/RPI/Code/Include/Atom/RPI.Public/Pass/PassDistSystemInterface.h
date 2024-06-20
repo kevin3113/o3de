@@ -21,6 +21,8 @@
 
 #include <AzFramework/Windowing/WindowBus.h>
 
+#include <Atom/RPI.Public/Pass/PassDistUtil.h>
+
 namespace AZ
 {
     namespace RPI
@@ -80,9 +82,9 @@ namespace AZ
 
             virtual void EnqueOutputDataMsg(void *data) = 0;
 
-            virtual int SendData(void *data[], uint32_t len[], uint32_t count) = 0;
+            virtual int SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo) = 0;
 
-            virtual int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count) = 0;
+            virtual int RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count, SplitInfo &splitInfo) = 0;
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
