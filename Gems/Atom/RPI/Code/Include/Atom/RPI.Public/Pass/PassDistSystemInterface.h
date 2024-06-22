@@ -88,15 +88,13 @@ namespace AZ
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
-            virtual RenderPipelinePtr CreateDistPipeline(int device, const RenderPipelineDescriptor &desc) = 0;
+            virtual RenderPipelinePtr CreateDistPipeline(const RenderPipelineDescriptor &desc) = 0;
 
-            virtual RenderPipelinePtr GetDistPipeline(int device) = 0;
+            virtual RenderPipelinePtr GetDistPipeline(void) = 0;
 
             virtual void SetActivePipeline(Name name) = 0;
 
             virtual Name GetActivePipeline(void) = 0;
-
-            virtual void FrameEnd(void) = 0;
 
             virtual void Enable(void) = 0;
 

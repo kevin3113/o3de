@@ -89,10 +89,6 @@ namespace AZ
             Interface<PassDistSystemInterface>::Unregister(this);
         }
 
-        void PassDistSystem::FrameEnd(void)
-        {
-        }
-
         void DumpMsg(const char *name, char *buf, uint32_t len)
         {
             uint32_t cur;
@@ -157,7 +153,6 @@ namespace AZ
             for (int loop = 0;;loop++)
             {
                 if (!(loop & 1))
-                //if (1)
                 {
                     msg = PassDistSystemInterface::Get()->DequePassMsg();
                 }
@@ -422,16 +417,13 @@ namespace AZ
                 printf("PassDistSystem::SendQue error server use Send method!\n");
                 return -1;
             }
+            if (m_sendFailMsg)
+            {
+                msg = (char *)m_sendFailMsg;
+            }
             else
             {
-                if (m_sendFailMsg)
-                {
-                    msg = (char *)m_sendFailMsg;
-                }
-                else
-                {
-                    msg = (char *)DequeOutputDataMsg(0);
-                }
+                msg = (char *)DequeOutputDataMsg(0);
             }
             MsgHead *msgHead = (MsgHead *)msg;
             if (write(sfd, msg, msgHead->msgLen) != msgHead->msgLen)
@@ -501,9 +493,7 @@ namespace AZ
             }
 
             printf("PassDistSystem::Recv ack_end proc free_oper buf %p\n", msg);
-
             free(msg);
-
             return 0;
         }
 
@@ -1032,7 +1022,6 @@ namespace AZ
             m_templates.emplace_back(passTemplate);
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, passName);
             return add;
-            //return nullptr;
         }
 
         Ptr<Pass> PassDistSystem::PassCreateFromRequestMsg(char *buf, uint32_t len)
@@ -1066,7 +1055,6 @@ namespace AZ
 
             Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req.get());
             return add;
-            //return nullptr;
         }
 
         uint32_t PassDistSystem::ParsePassCreateMsg(char *buf, uint32_t len, Ptr<ParentPass> &root)
@@ -1459,23 +1447,17 @@ namespace AZ
             }
         }
 
-        RenderPipelinePtr PassDistSystem::CreateDistPipeline(int device, const RenderPipelineDescriptor &desc)
+        RenderPipelinePtr PassDistSystem::CreateDistPipeline(const RenderPipelineDescriptor &desc)
         {
             RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
-            m_devPipelines.emplace(device, pipeline);
-            printf("PassDistSystem add pipeline [%s] on device %d\n",
-                desc.m_name.c_str(), device);
+            m_distPipeline = pipeline;
+            printf("PassDistSystem add pipeline [%s]\n", desc.m_name.c_str());
             return pipeline;
         }
 
-        RenderPipelinePtr PassDistSystem::GetDistPipeline(int device)
+        RenderPipelinePtr PassDistSystem::GetDistPipeline(void)
         {
-            auto itr = m_devPipelines.find(device);
-            if (itr != m_devPipelines.end())
-            {
-                return itr->second;
-            }
-            return nullptr;
+            return m_distPipeline;
         }
 
         void PassDistSystem::SetActivePipeline(Name name)
@@ -1516,200 +1498,5 @@ namespace AZ
         {
             return m_state;
         }
-#if 0
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node)
-        {
-            PassRequest req;
-            req.m_passName = name;
-            req.m_templateName = "CopyPassTemplate";
-
-            PassConnection conn;
-            conn.m_localSlot = "Input";
-            conn.m_attachmentRef.m_pass = node->GetName();
-            conn.m_attachmentRef.m_attachment = "Output";
-            req.m_connections.emplace_back(conn);
-
-            auto passData = AZStd::make_shared<CopyPassData>();
-            passData->m_cloneInput = true;
-            req.m_passData = passData;
-
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-            return add;
-        }
-
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node)
-        {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = "FullscreenShadowPassDistPreTemplate";
-            passTemplate->m_passClass = "ComputePass";
-
-            PassSlot slot;
-            PassConnection conn;
-
-            for (uint32_t i = 0; i < node->GetInputCount(); i++)
-            {
-                PassAttachmentBinding binding = node->GetInputBinding(i);
-                if (binding.m_name == Name("DirectionalShadowmaps")
-                    || binding.m_name == Name("Depth")
-                    || binding.m_name == Name("DepthLinear"))
-                {
-                    if (binding.GetAttachment()->GetAttachmentType() == RHI::AttachmentType::Buffer)
-                    {
-                        PassBufferAttachmentDesc pbd;
-                        pbd.m_name = binding.GetAttachment()->m_name;
-                        pbd.m_bufferDescriptor = binding.GetAttachment()->m_descriptor.m_buffer;
-                        passTemplate->m_bufferAttachments.emplace_back(pbd);
-                    }
-                    else
-                    {
-                        PassImageAttachmentDesc pid;
-                        pid.m_name = binding.GetAttachment()->m_name;
-                        pid.m_imageDescriptor = binding.GetAttachment()->m_descriptor.m_image;
-                        passTemplate->m_imageAttachments.emplace_back(pid);
-                    }
-                    slot.m_name = binding.m_name;
-                    slot.m_slotType = PassSlotType::InputOutput;
-                    conn.m_localSlot = slot.m_name;
-                    passTemplate->m_slots.emplace_back(slot);
-                    conn.m_attachmentRef.m_pass = "This";
-                    conn.m_attachmentRef.m_attachment = binding.GetAttachment()->m_name;
-                    passTemplate->m_connections.emplace_back(conn);
-                }
-            }
-
-            m_templates.emplace_back(passTemplate);
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
-            return add;
-        }
-
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass> prePass, Ptr<Pass> node)
-        {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = "FullscreenShadowPassDistAfterTemplate";
-            passTemplate->m_passClass = "CommPass";
-            //passTemplate->m_passClass = "CopyPass";
-
-            PassSlot slot;
-            PassConnection conn;
-
-            slot.m_name = "ImgInput";
-            slot.m_slotType = PassSlotType::Input;
-            conn.m_localSlot = slot.m_name;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_attachmentRef.m_pass = prePass->GetName();
-            conn.m_attachmentRef.m_attachment = "Output";
-            passTemplate->m_connections.emplace_back(conn);
-
-            PassBufferAttachmentDesc pbd;
-            pbd.m_name = "BufferHostVisible";
-            auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
-            RHI::ImageDescriptor imgDesc = refAttachment->m_descriptor.m_image;
-            pbd.m_bufferDescriptor.m_byteCount = RHI::GetFormatSize(imgDesc.m_format) *
-                imgDesc.m_size.m_width * imgDesc.m_size.m_height * imgDesc.m_size.m_depth;
-            printf("image size is %d %d %d, format %d size %d\n",
-                (int)imgDesc.m_size.m_width, (int)imgDesc.m_size.m_height, (int)imgDesc.m_size.m_depth,
-                (int)imgDesc.m_format, (int)RHI::GetFormatSize(imgDesc.m_format));
-            pbd.m_bufferDescriptor.m_bindFlags = RHI::BufferBindFlags::ShaderReadWrite | RHI::BufferBindFlags::DynamicInputAssembly;
-            passTemplate->m_bufferAttachments.emplace_back(pbd);
-
-            slot.m_name = "BufOutput";
-            slot.m_slotType = PassSlotType::Output;
-            conn.m_localSlot = slot.m_name;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_attachmentRef.m_pass = "This";
-            conn.m_attachmentRef.m_attachment = pbd.m_name;
-            passTemplate->m_connections.emplace_back(conn);
-
-            //auto passData = AZStd::make_shared<CopyPassData>();
-            //passData->m_cloneInput = false;
-
-            auto passData = AZStd::make_shared<CommPassData>();
-            passData->m_submit = false;
-            passData->m_cloneInput = false;
-            passData->m_commOper = CommOper::None;
-            passTemplate->m_passData = passData;
-
-            m_templates.emplace_back(passTemplate);
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
-            return add;
-        }
-
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node)
-        {
-            AZStd::shared_ptr<PassTemplate> passTemplate;
-            passTemplate = AZStd::make_shared<PassTemplate>();
-            passTemplate->m_name = "FullscreenShadowPassDistAfterOutTemplate";
-            passTemplate->m_passClass = "ComputePass";
-
-            PassSlot slot;
-            PassConnection conn;
-
-            slot.m_name = "AfterOutput";
-            slot.m_slotType = PassSlotType::InputOutput;
-            conn.m_localSlot = slot.m_name;
-            passTemplate->m_slots.emplace_back(slot);
-            conn.m_attachmentRef.m_pass = node->GetName();
-            conn.m_attachmentRef.m_attachment = "BufOutput";
-            passTemplate->m_connections.emplace_back(conn);
-
-            m_templates.emplace_back(passTemplate);
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromTemplate(passTemplate, name);
-            return add;
-        }
-
-        Ptr<Pass> PassDistSystem::CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node)
-        {
-            Name prePassName = prePass->GetName();
-            PassConnection conn;
-            PassRequest req;
-            req.m_passName = name;
-            req.m_templateName = "FullscreenShadowTemplate";
-
-            conn.m_localSlot = "DirectionalShadowmaps";
-            conn.m_attachmentRef.m_pass = prePassName;
-            conn.m_attachmentRef.m_attachment = "DirectionalShadowmaps";
-            req.m_connections.emplace_back(conn);
-
-            conn.m_localSlot = "Depth";
-            conn.m_attachmentRef.m_pass = prePassName;
-            conn.m_attachmentRef.m_attachment = "Depth";
-            req.m_connections.emplace_back(conn);
-
-            conn.m_localSlot = "DepthLinear";
-            conn.m_attachmentRef.m_pass = prePassName;
-            conn.m_attachmentRef.m_attachment = "DepthLinear";
-            req.m_connections.emplace_back(conn);
-
-            PassImageAttachmentDesc outDesc;
-            outDesc.m_name = node->GetOutputBinding(0).GetAttachment()->m_name;
-            outDesc.m_imageDescriptor = node->GetOutputBinding(0).GetAttachment()->m_descriptor.m_image;
-
-            if (node->GetOutputBinding(0).GetAttachment()->m_sizeSource)
-            {
-                auto& refAttachment = node->GetOutputBinding(0).GetAttachment()->m_sizeSource->GetAttachment();
-                printf("m_sizeSource atta id [%s] size from ref %p\n", node->GetOutputBinding(0).GetAttachment()->GetAttachmentId().GetCStr(),
-                    refAttachment.get());
-                if (refAttachment && refAttachment->m_descriptor.m_type == RHI::AttachmentType::Image)
-                {
-                    printf("m_sizeSource ref to [%s] size 0x %x_%x_%x format %d\n", refAttachment->GetAttachmentId().GetCStr(),
-                        refAttachment->m_descriptor.m_image.m_size.m_width,
-                        refAttachment->m_descriptor.m_image.m_size.m_height,
-                        refAttachment->m_descriptor.m_image.m_size.m_depth,
-                        (int)refAttachment->m_descriptor.m_image.m_format);
-                    outDesc.m_imageDescriptor = refAttachment->m_descriptor.m_image;
-                }
-            }
-
-            req.m_imageAttachmentOverrides.emplace_back(outDesc);
-
-            printf("create pass [%s] m_imageAttachmentOverrides m_name [%s]\n",
-                name.GetCStr(), node->GetOutputBinding(0).GetAttachment()->m_name.GetCStr());
-            
-            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(&req);
-            return add;
-        }
-#endif
     }   // namespace RPI
 }   // namespace AZ

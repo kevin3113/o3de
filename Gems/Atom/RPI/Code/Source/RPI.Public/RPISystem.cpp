@@ -367,7 +367,7 @@ namespace AZ
                             PassDistSystemInterface::Get()->Enable();
                     }
                     RenderPipelinePtr def =  scenePtr->GetDefaultRenderPipeline();
-                    RenderPipelinePtr pipeline = PassDistSystemInterface::Get()->GetDistPipeline(1);
+                    RenderPipelinePtr pipeline = PassDistSystemInterface::Get()->GetDistPipeline();
                     if (pipeline == nullptr)
                     {
                         const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0"), .m_renderSettings = 
@@ -377,7 +377,7 @@ namespace AZ
                             def->GetDescriptor().m_renderSettings.m_size.m_width,
                             def->GetDescriptor().m_renderSettings.m_size.m_height,
                             def->GetDescriptor().m_renderSettings.m_size.m_depth);
-                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(1, desc);
+                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(desc);
                         scenePtr->AddRenderPipeline(pipeline);
                     }
                     else
@@ -428,7 +428,7 @@ namespace AZ
                 {
                     printf("### Test pipeline started server %d pass number %d!\n", 
                         (int)PassDistSystemInterface::Get()->GetActivePipeline().IsEmpty(),
-                        (int)PassDistSystemInterface::Get()->GetDistPipeline(1)->GetRootPass()->GetChildren().size());
+                        (int)PassDistSystemInterface::Get()->GetDistPipeline()->GetRootPass()->GetChildren().size());
                 }
             }
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);

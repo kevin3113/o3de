@@ -64,15 +64,7 @@ namespace AZ
                 pthread_mutex_lock(&m_mutex);
                 if (m_writeItr - m_writeItr > MAX_QUE_LEN / 8)
                 {
-                    printf("QUE_INFO: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
-                }
-                else if (m_writeItr - m_writeItr > MAX_QUE_LEN / 2)
-                {
                     printf("QUE_WARN: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
-                }
-                else if (m_writeItr - m_writeItr > MAX_QUE_LEN )
-                {
-                    printf("QUE_ERROR: V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
                 }
                 m_dataQue[m_writeItr % MAX_QUE_LEN] = data;
                 //printf("V_oper buf %p write %ld/%ld que %p\n", data, m_readItr, m_writeItr, (void*)this);
@@ -120,13 +112,7 @@ namespace AZ
             Ptr<Pass> CreateFullscreenShadowPrePass(Name name, Ptr<Pass> node);
 
             Ptr<Pass> CreateFullscreenShadowAfterPass(Name name, Ptr<Pass> node);
-#if 0
-            Ptr<Pass> CreateFullscreenShadowDistPrePass(Name name, Ptr<Pass> node);
 
-            Ptr<Pass> CreateFullscreenShadowDistAfterPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
-
-            Ptr<Pass> CreateFullscreenShadowDistAfterOutPass(Name name, Ptr<Pass> node);
-#endif
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
             uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
@@ -186,15 +172,13 @@ namespace AZ
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
-            RenderPipelinePtr CreateDistPipeline(int device, const RenderPipelineDescriptor &desc) override;
+            RenderPipelinePtr CreateDistPipeline(const RenderPipelineDescriptor &desc) override;
 
-            RenderPipelinePtr GetDistPipeline(int device) override;
+            RenderPipelinePtr GetDistPipeline(void) override;
 
             void SetActivePipeline(Name name) override;
 
             Name GetActivePipeline(void) override;
-
-            void FrameEnd(void) override;
 
             void Enable(void) override;
 
@@ -210,7 +194,7 @@ namespace AZ
 
             AZStd::vector<AZStd::shared_ptr<PassRequest>> m_requests;
 
-            AZStd::unordered_map<int, RenderPipelinePtr> m_devPipelines;
+            RenderPipelinePtr m_distPipeline = nullptr;
 
             Name m_activePipeline;
 
