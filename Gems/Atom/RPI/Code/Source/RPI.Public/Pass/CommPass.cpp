@@ -213,7 +213,7 @@ namespace AZ
                 len[0] = 1024;
                 SplitInfo splitInfo;
                 splitInfo.m_splitCnt = m_data.m_splitInfo.m_splitCnt;
-                splitInfo.m_splitIdx = 1;
+                splitInfo.m_splitIdx = m_data.m_splitInfo.m_splitIdx;
                 int ret = PassDistSystemInterface::Get()->SendData(data, len, 1, splitInfo);
                 printf("CommPass %s send data message ret %d index %u\n", GetName().GetCStr(), ret, splitInfo.m_splitIdx);
             }
