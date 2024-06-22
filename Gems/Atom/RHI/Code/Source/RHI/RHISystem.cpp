@@ -106,6 +106,16 @@ namespace AZ::RHI
     {
         RHI::PhysicalDeviceList physicalDevices = RHI::Factory::Get().EnumeratePhysicalDevices();
 
+        RHI::VendorId preferVendor = RHI::VendorId::nVidia;
+        char *vendor = getenv("DEV_VENDOR");
+        if (vendor)
+        {
+            if (Name(vendor) == Name("Intel"))
+            {
+                preferVendor = RHI::VendorId::Intel;
+            }
+        }
+
         AZ_Printf("RHISystem", "Initializing RHI...\n");
 
         if (physicalDevices.empty())
@@ -127,7 +137,7 @@ namespace AZ::RHI
 
                 AZ_Printf("RHISystem", "\tEnumerated physical device: %s\n", descriptor.m_description.c_str());
 
-                if (descriptor.m_vendorId == RHI::VendorId::nVidia)
+                if (descriptor.m_vendorId == preferVendor)
                 {
                     printf("Prefer Device Index %d, %s\n", preferIndex, descriptor.m_description.c_str());
                     if (deviceCount == preferIndex)

@@ -172,13 +172,13 @@ namespace AZ
 
             void EnquePassMsg(void *data) override;
 
-            void *DequeInputDataMsg(bool noWait = false) override;
+            void *DequeInputDataMsg(uint32_t queId, bool noWait = false) override;
 
-            void EnqueInputDataMsg(void *data) override;
+            void EnqueInputDataMsg(uint32_t queId, void *data) override;
 
-            void *DequeOutputDataMsg(bool noWait = false) override;
+            void *DequeOutputDataMsg(uint32_t queId, bool noWait = false) override;
 
-            void EnqueOutputDataMsg(void *data) override;
+            void EnqueOutputDataMsg(uint32_t queId, void *data) override;
 
             int SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo) override;
 
@@ -231,11 +231,11 @@ namespace AZ
 
             void *m_sendFailMsg = nullptr;
 
-            WaitQueue m_msgQue;
+            WaitQueue m_passMsgQue;
 
-            WaitQueue m_dataInputQue;
+            AZStd::vector<WaitQueue> m_dataInputQues;
 
-            WaitQueue m_dataOutputQue;
+            AZStd::vector<WaitQueue> m_dataOutputQues;
 
         };
     }   // namespace RPI

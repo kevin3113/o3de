@@ -80,6 +80,8 @@ namespace AZ
                     printf("PassDistSystem::Init update split count %u\n", m_splitInfo.m_splitCnt);
                 }
             }
+            m_dataInputQues.resize(m_splitInfo.m_splitCnt);
+            m_dataOutputQues.resize(m_splitInfo.m_splitCnt);
         }
 
         void PassDistSystem::Shutdown()
@@ -149,6 +151,7 @@ namespace AZ
         void *SeverSendThread(void *arg)
         {
             int cfd = *(int *)arg;
+            uint32_t splitIdx = 0;
             void *msg;
 
             for (int loop = 0;;loop++)
@@ -160,9 +163,10 @@ namespace AZ
                 }
                 else
                 {
-                    msg = PassDistSystemInterface::Get()->DequeInputDataMsg();
+                    msg = PassDistSystemInterface::Get()->DequeInputDataMsg(splitIdx);
                 }
                 MsgHead *msgHead = (MsgHead *)msg;
+                splitIdx = msgHead->splitInfo.m_splitIdx;
                 printf("SeverSendThread msg_deque message len %u deque_oper buf %p ticket %lu index %u\n",
                     msgHead->msgLen, msg, msgHead->ticket, msgHead->splitInfo.m_splitIdx);
                 //DumpMsg("send-pass.txt", (char *)msg, msgHead->msgLen);
@@ -262,7 +266,7 @@ namespace AZ
             ssize_t ret = read(sfd, &msgHead, sizeof(MsgHead));
             if (ret != sizeof(MsgHead))
             {
-                printf("RecvOneMsg recv data error message head %d!\n", (int)ret);
+                printf("RecvOneMsg msg_error recv data error message head %d!\n", (int)ret);
                 return -1;
             }
             printf("RecvOneMsg msg_read_head message type %u len %u ticket %ld index %u\n",
@@ -270,7 +274,7 @@ namespace AZ
                 msgHead.splitInfo.m_splitIdx);
             if (msgHead.msgType >= (uint32_t)DistMsgType::Count)
             {
-                printf("RecvOneMsg recv invalid message!\n");
+                printf("RecvOneMsg msg_error recv invalid message type %d!\n", (int)msgHead.msgType);
                 return -1;
             }
             char *buf = (char *)malloc(msgHead.msgLen);
@@ -389,7 +393,7 @@ namespace AZ
         int PassDistSystem::Send(int sfd)
         {
             char buf[256];
-            const char *msg = "client send msg ...............\n";
+            const char *msg = "client send ack ...............\n";
             MsgHead *msgHead = (MsgHead *)buf;
             msgHead->msgType = (uint32_t)DistMsgType::Debug;
             msgHead->ticket = m_ticket;
@@ -400,11 +404,11 @@ namespace AZ
             debugInfo->infoLen = strnlen(msg, 256) + 1 + sizeof(MsgDebugInfo);
             strncpy(buf + sizeof(MsgHead) + sizeof(MsgDebugInfo), msg, 256 - sizeof(MsgHead) - sizeof(MsgDebugInfo));
             msgHead->msgLen = debugInfo->infoLen + sizeof(MsgHead);
-            printf("PassDistSystem::Send msg_reply msg %p type %u, len %u ticket %ld\n",
+            printf("PassDistSystem::Send ack_reply msg %p type %u, len %u ticket %ld\n",
                 buf, msgHead->msgType, msgHead->msgLen, msgHead->ticket);
             if (write(sfd, buf, msgHead->msgLen) != msgHead->msgLen)
             {
-                printf("PassDistSystem::Send msg_error %p partial/failed write error!\n", buf);
+                printf("PassDistSystem::Send ack_error %p partial/failed write error!\n", buf);
                 return -1;
             }
             return 0;
@@ -426,7 +430,7 @@ namespace AZ
                 }
                 else
                 {
-                    msg = (char *)DequeOutputDataMsg();
+                    msg = (char *)DequeOutputDataMsg(0);
                 }
             }
             MsgHead *msgHead = (MsgHead *)msg;
@@ -470,7 +474,7 @@ namespace AZ
                 {
                     if (msgHead->ticket == m_ticket)
                     {
-                        EnqueOutputDataMsg((void *)msg);
+                        EnqueOutputDataMsg(msgHead->splitInfo.m_splitIdx, (void *)msg);
                     }
                     else
                     {
@@ -480,7 +484,7 @@ namespace AZ
                 }
                 else
                 {
-                    EnqueInputDataMsg((void *)msg);
+                    EnqueInputDataMsg(0, (void *)msg);
                 }
                 return 0;
             }
@@ -488,7 +492,7 @@ namespace AZ
             if (msgHead->msgType == (uint32_t)DistMsgType::Debug)
             {
                 MsgDebugInfo *debugInfo = (MsgDebugInfo *)(msg + sizeof(MsgHead));
-                printf("PassDistSystem::Recv msg_debug info len %u, node %u, info: %s\n", debugInfo->infoLen,
+                printf("PassDistSystem::Recv ack_debug info len %u, node %u, info: %s\n", debugInfo->infoLen,
                     debugInfo->nodeId, msg + sizeof(MsgHead) + sizeof(MsgDebugInfo));
             }
             else
@@ -496,7 +500,7 @@ namespace AZ
                 printf("PassDistSystem::Recv msg_error invalid message type %u\n", msgHead->msgType);
             }
 
-            printf("PassDistSystem::Recv msg_end proc free_oper buf %p\n", msg);
+            printf("PassDistSystem::Recv ack_end proc free_oper buf %p\n", msg);
 
             free(msg);
 
@@ -520,32 +524,32 @@ namespace AZ
 
         void *PassDistSystem::DequePassMsg(bool noWait)
         {
-            return m_msgQue.P(noWait);
+            return m_passMsgQue.P(noWait);
         }
 
         void PassDistSystem::EnquePassMsg(void *data)
         {
-            m_msgQue.V(data);
+            m_passMsgQue.V(data);
         }
 
-        void *PassDistSystem::DequeInputDataMsg(bool noWait)
+        void *PassDistSystem::DequeInputDataMsg(uint32_t queId, bool noWait)
         {
-            return m_dataInputQue.P(noWait);
+            return m_dataInputQues[queId].P(noWait);
         }
 
-        void PassDistSystem::EnqueInputDataMsg(void *data)
+        void PassDistSystem::EnqueInputDataMsg(uint32_t queId, void *data)
         {
-            m_dataInputQue.V(data);
+            m_dataInputQues[queId].V(data);
         }
 
-        void *PassDistSystem::DequeOutputDataMsg(bool noWait)
+        void *PassDistSystem::DequeOutputDataMsg(uint32_t queId, bool noWait)
         {
-            return m_dataOutputQue.P(noWait);
+            return m_dataOutputQues[queId].P(noWait);
         }
 
-        void PassDistSystem::EnqueOutputDataMsg(void *data)
+        void PassDistSystem::EnqueOutputDataMsg(uint32_t queId, void *data)
         {
-            m_dataOutputQue.V(data);
+            m_dataOutputQues[queId].V(data);
         }
 
         int PassDistSystem::SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo)
@@ -570,7 +574,6 @@ namespace AZ
                 passData->nodeId = 0;
                 curPos += sizeof(MsgPassData);
                 memcpy(msg + curPos, data[msgCnt], len[msgCnt]);
-                free(data[msgCnt]);
                 curPos += len[msgCnt];
                 printf("PassDistSystem::SendData msg_pack data %p len %u number %u\n", data[msgCnt], len[msgCnt], msgCnt);
             }
@@ -582,11 +585,11 @@ namespace AZ
                 (int)m_isServer, msg, totalLen, count, msgHead->ticket, splitInfo.m_splitIdx);
             if (m_isServer)
             {
-                EnqueInputDataMsg((void *)msg);
+                EnqueInputDataMsg(splitInfo.m_splitIdx, (void *)msg);
             }
             else
             {
-                EnqueOutputDataMsg((void *)msg);
+                EnqueOutputDataMsg(0, (void *)msg);
             }
             return 0;
         }
@@ -594,14 +597,14 @@ namespace AZ
         int PassDistSystem::RecvData(void *data[], uint32_t len[], uint32_t size, uint32_t *count, SplitInfo &splitInfo)
         {
             char *msg;
-            printf("PassDistSystem::RecvData msg_wait for data count %u\n", size);
+            printf("PassDistSystem::RecvData msg_wait for data count %u index %u\n", size, splitInfo.m_splitIdx);
             if (m_isServer)
             {
-                msg = (char *)DequeOutputDataMsg();
+                msg = (char *)DequeOutputDataMsg(splitInfo.m_splitIdx);
             }
             else
             {
-                msg = (char *)DequeInputDataMsg();
+                msg = (char *)DequeInputDataMsg(0);
             }
             MsgHead *msgHead = (MsgHead *)msg;
             uint32_t curPos = sizeof(MsgHead);
@@ -1273,6 +1276,16 @@ namespace AZ
             cur += CreateFullscreenShadowDistAfterPassMsg(buf + cur, 10240 - cur, Name(afterName.c_str()), Name(distName.c_str()));
             printf("CreateFullscreenShadowDistAfterPassMsg encode len %d\n", cur);
             msgHead->msgLen = cur;
+            for (uint32_t idx = m_splitInfo.m_splitCnt - 1; idx > 1; idx--)
+            {
+                char *msg = (char *)malloc(msgHead->msgLen);
+                memcpy(msg, buf, msgHead->msgLen);
+                MsgHead *head = (MsgHead *)msg;
+                head->splitInfo.m_splitIdx = idx;
+                printf("CloneFullscreenShadow msg_enque pass message enque_oper buf %p len %u ticket %lu index %u\n",
+                    msg, head->msgLen, head->ticket, head->splitInfo.m_splitIdx);
+                EnquePassMsg((void *)msg);
+            }
             printf("CloneFullscreenShadow msg_enque pass message enque_oper buf %p len %u ticket %lu index %u\n",
                 buf, cur, msgHead->ticket, msgHead->splitInfo.m_splitIdx);
             EnquePassMsg((void *)buf);

@@ -176,14 +176,34 @@ namespace AZ
                 uint32_t len[8];
                 uint32_t count = 0;
                 SplitInfo splitInfo;
-                printf("CommPass %s enter recv data message \n", GetName().GetCStr());
-                int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count, splitInfo);
-                printf("CommPass %s recv data message count %u ret %d index %u\n",
-                    GetName().GetCStr(), count, ret, splitInfo.m_splitIdx);
-                for (int i = 0; i < count && i < 8; i++)
+                printf("CommPass %s msg_enter recv data message \n", GetName().GetCStr());
+                splitInfo.m_splitCnt = m_data.m_splitInfo.m_splitCnt;
+                if (m_data.m_commOper == CommOper::MergeOutput)
                 {
-                    printf("CommPass recv data message %p len %u\n", buf[i], len[i]);
-                    free(buf[i]);
+                    for (uint32_t idx = m_data.m_splitInfo.m_splitCnt - 1; idx > 0; idx--)
+                    {
+                        splitInfo.m_splitIdx = idx;
+                        int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count, splitInfo);
+                        printf("CommPass MergeOutput %s msg_recv data message count %u ret %d index %u\n",
+                            GetName().GetCStr(), count, ret, splitInfo.m_splitIdx);
+                        for (int i = 0; i < count && i < 8; i++)
+                        {
+                            printf("CommPass MergeOutput %s msg_recv data message %p len %u\n", GetName().GetCStr(), buf[i], len[i]);
+                            free(buf[i]);
+                        }
+                    }
+                }
+                else
+                {
+                    splitInfo.m_splitIdx = m_data.m_splitInfo.m_splitIdx;
+                    int ret = PassDistSystemInterface::Get()->RecvData(buf, len, 8, &count, splitInfo);
+                    printf("CommPass %s PrepareInput msg_recv data message count %u ret %d index %u\n",
+                        GetName().GetCStr(), count, ret, splitInfo.m_splitIdx);
+                    for (int i = 0; i < count && i < 8; i++)
+                    {
+                        printf("CommPass %s PrepareInput msg_recv data message %p len %u\n", GetName().GetCStr(), buf[i], len[i]);
+                        free(buf[i]);
+                    }
                 }
             }
 
@@ -213,9 +233,23 @@ namespace AZ
                 len[0] = 1024;
                 SplitInfo splitInfo;
                 splitInfo.m_splitCnt = m_data.m_splitInfo.m_splitCnt;
-                splitInfo.m_splitIdx = m_data.m_splitInfo.m_splitIdx;
-                int ret = PassDistSystemInterface::Get()->SendData(data, len, 1, splitInfo);
-                printf("CommPass %s send data message ret %d index %u\n", GetName().GetCStr(), ret, splitInfo.m_splitIdx);
+                printf("CommPass %s msg_enter send data message \n", GetName().GetCStr());
+                if (m_data.m_commOper == CommOper::CopyInput)
+                {
+                    for (uint32_t idx = m_data.m_splitInfo.m_splitCnt - 1; idx > 0; idx--)
+                    {
+                        splitInfo.m_splitIdx = idx;
+                        int ret = PassDistSystemInterface::Get()->SendData(data, len, 1, splitInfo);
+                        printf("CommPass %s CopyInput msg_send ret %d index %u\n", GetName().GetCStr(), ret, splitInfo.m_splitIdx);
+                    }
+                }
+                else
+                {
+                    splitInfo.m_splitIdx = m_data.m_splitInfo.m_splitIdx;
+                    int ret = PassDistSystemInterface::Get()->SendData(data, len, 1, splitInfo);
+                    printf("CommPass %s CopyOutput msg_send ret %d index %u\n", GetName().GetCStr(), ret, splitInfo.m_splitIdx);
+                }
+                free(buf);
             }
         }
 

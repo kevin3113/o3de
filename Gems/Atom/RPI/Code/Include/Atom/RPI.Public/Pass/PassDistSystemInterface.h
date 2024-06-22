@@ -74,13 +74,13 @@ namespace AZ
 
             virtual void EnquePassMsg(void *data) = 0;
 
-            virtual void *DequeInputDataMsg(bool noWait = false) = 0;
+            virtual void *DequeInputDataMsg(uint32_t queId, bool noWait = false) = 0;
 
-            virtual void EnqueInputDataMsg(void *data) = 0;
+            virtual void EnqueInputDataMsg(uint32_t queId, void *data) = 0;
 
-            virtual void *DequeOutputDataMsg(bool noWait = false) = 0;
+            virtual void *DequeOutputDataMsg(uint32_t queId, bool noWait = false) = 0;
 
-            virtual void EnqueOutputDataMsg(void *data) = 0;
+            virtual void EnqueOutputDataMsg(uint32_t queId, void *data) = 0;
 
             virtual int SendData(void *data[], uint32_t len[], uint32_t count, SplitInfo &splitInfo) = 0;
 
