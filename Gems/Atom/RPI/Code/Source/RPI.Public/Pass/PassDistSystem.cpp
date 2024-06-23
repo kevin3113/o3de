@@ -74,7 +74,7 @@ namespace AZ
             if (value)
             {
                 int count = atoi(value);
-                if (count > 1)
+                if (count >= 1)
                 {
                     m_splitInfo.m_splitCnt = (uint16_t)count;
                     printf("PassDistSystem::Init update split count %u\n", m_splitInfo.m_splitCnt);
@@ -92,10 +92,10 @@ namespace AZ
                     m_displayEnable = true;
                     printf("PassDistSystem::Init dist pipe display enabled!\n");
                 }
-                char *prof = getenv("DIST_PROF");
-                if (prof && atoi(prof) == 0)
+                char *prof = getenv("DIST_UI");
+                if (prof && atoi(prof) == 1)
                 {
-                    m_displayProf = false;
+                    m_displayImGui = true;
                     printf("PassDistSystem::Init dist pipe display profiling disabled!\n");
                 }
             }
@@ -755,7 +755,7 @@ namespace AZ
             return add;
         }
 
-        Ptr<Pass> PassDistSystem::CreateDistProfiling(Ptr<Pass> pass)
+        Ptr<Pass> PassDistSystem::CreateDistImGui(Ptr<Pass> pass)
         {
             AZStd::shared_ptr<PassRequest> req = AZStd::make_shared<PassRequest>();
             m_requests.emplace_back(req);
@@ -1183,9 +1183,9 @@ namespace AZ
             } while(cur < len);
             if (m_displayEnable)
             {
-                if (m_displayProf)
+                if (m_displayImGui)
                 {
-                    pass = CreateDistProfiling(pass);
+                    pass = CreateDistImGui(pass);
                     root->AddChild(pass);
                     pass->Build(false);
                 }
@@ -1396,7 +1396,10 @@ namespace AZ
             {
                 printf("pass [%s] has been modified!\n", pass->GetName().GetCStr());
             }
-            CloneFullscreenShadow(pass);
+            if (m_splitInfo.m_splitCnt > 1)
+            {
+                CloneFullscreenShadow(pass);
+            }
         }
 
         void PassDistSystem::ModifyDistPassGraph(Ptr<ParentPass> &root)
