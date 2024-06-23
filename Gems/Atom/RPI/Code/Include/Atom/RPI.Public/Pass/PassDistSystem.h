@@ -115,6 +115,8 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
+            Ptr<Pass> CreateDistCopyToSwapChain(Ptr<Pass> pass);
+
             uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
 
             uint32_t CreateFullscreenShadowDistPassMsg(char *buf, uint32_t len, Name name, Name prePassName, Ptr<Pass> node);
@@ -172,7 +174,7 @@ namespace AZ
 
             void ProcessDistChanges(Ptr<ParentPass> &root) override;
 
-            RenderPipelinePtr CreateDistPipeline(const RenderPipelineDescriptor &desc) override;
+            RenderPipelinePtr CreateDistPipeline(const RenderPipelinePtr main) override;
 
             RenderPipelinePtr GetDistPipeline(void) override;
 
@@ -185,6 +187,8 @@ namespace AZ
             void Disable(void) override;
 
             bool IsEnable(void) override;
+
+            bool IsActive(void) override;
 
         private:
             // List of pass node to be add
@@ -199,6 +203,10 @@ namespace AZ
             Name m_activePipeline;
 
             bool m_state = false;
+
+            bool m_hasDistPass = false;
+
+            bool m_displayEnable = false;
 
             Name m_modify;
 

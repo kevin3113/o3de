@@ -82,6 +82,21 @@ namespace AZ
             }
             m_dataInputQues.resize(m_splitInfo.m_splitCnt);
             m_dataOutputQues.resize(m_splitInfo.m_splitCnt);
+            char *pipeline = getenv("DIST_PIPE");
+            if (pipeline && atoi(pipeline))
+            {
+                SetActivePipeline(Name("Test_0"));
+                char *display = getenv("DIST_VIEW");
+                if (display && atoi(display))
+                {
+                    m_displayEnable = true;
+                    printf("PassDistSystem::Init dist pipe display enabled!\n");
+                }
+            }
+            else
+            {
+                SetActivePipeline(Name());
+            }
         }
 
         void PassDistSystem::Shutdown()
@@ -734,6 +749,44 @@ namespace AZ
             return add;
         }
 
+        Ptr<Pass> PassDistSystem::CreateDistCopyToSwapChain(Ptr<Pass> pass)
+        {
+            AZStd::shared_ptr<PassRequest> req = AZStd::make_shared<PassRequest>();
+            m_requests.emplace_back(req);
+            PassSlotList slots;
+            req->m_passName = Name("CopyToSwapChain");
+            req->m_templateName = Name("FullscreenCopyTemplate");
+
+            PassConnection conn;
+            conn.m_localSlot = "Input";
+            conn.m_attachmentRef.m_pass = pass->GetName();
+            if (pass->GetOutputCount() > 0)
+            {
+                conn.m_attachmentRef.m_attachment = pass->GetOutputBinding(0).m_name;
+            }
+            else if (pass->GetInputOutputCount() > 0)
+            {
+                conn.m_attachmentRef.m_attachment = pass->GetInputOutputBinding(0).m_name;
+            }
+            else
+            {
+                printf("PassDistSystem::CreateDistCopyToSwapChain error Pass [%s] has no outputs!\n", pass->GetName().GetCStr());
+                conn.m_attachmentRef.m_attachment = "Output";
+            }
+            conn.m_attachmentRef.m_attachment = pass->GetOutputBinding(0).m_name;
+            req->m_connections.emplace_back(conn);
+            conn.m_localSlot = "Output";
+            conn.m_attachmentRef.m_pass = "PipelineGlobal";
+            conn.m_attachmentRef.m_attachment = "PipelineOutput";
+            req->m_connections.emplace_back(conn);
+
+            printf("PassDistSystem::CreateDistCopyToSwapChain Pass [%s] template [%s]\n",
+                req->m_passName.GetCStr(), req->m_templateName.GetCStr());
+
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req.get());
+            return add;
+        }
+
         uint32_t PassDistSystem::CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node)
         {
             char *pos = buf;
@@ -1061,11 +1114,11 @@ namespace AZ
         {
             char *pos = buf;
             uint32_t cur = 0;
+            Ptr<Pass> pass = nullptr;
             printf("ParsePassCreateMsg %p\n", (void *)buf);
             do
             {
                 MsgPassGraph *passHead = (MsgPassGraph *)pos;
-                Ptr<Pass> pass = nullptr;
                 if (passHead->createType == (uint32_t)PassCreateType::Template)
                 {
                     pass = PassCreateFromTemplateMsg(pos, passHead->passLen);
@@ -1083,10 +1136,15 @@ namespace AZ
                     root->AddChild(pass);
                     pass->Build(false);
                 }
-
                 cur += passHead->passLen;
                 pos += passHead->passLen;
             } while(cur < len);
+            if (m_displayEnable)
+            {
+                pass = CreateDistCopyToSwapChain(pass);
+                root->AddChild(pass);
+                pass->Build(false);
+            }
             return cur;
         }
 
@@ -1334,6 +1392,7 @@ namespace AZ
             m_requests.clear();
             m_splitInfo.m_splitCnt = 0;
             m_splitInfo.m_splitIdx = 0;
+            m_hasDistPass = false;
             void *msg = DequePassMsg(true);
             if (msg)
             {
@@ -1345,6 +1404,7 @@ namespace AZ
                 //DumpMsg("proc.txt", (char *)msg, msgHead->msgLen);
 
                 ParsePassCreateMsg((char *)msgHead + sizeof(MsgHead), msgHead->msgLen - sizeof(MsgHead), root);
+                m_hasDistPass = true;
 
                 printf("BuildDistPassGraph after proc pass message len %u free_oper buf %p\n", msgHead->msgLen, msg);
                 free(msg);
@@ -1447,12 +1507,26 @@ namespace AZ
             }
         }
 
-        RenderPipelinePtr PassDistSystem::CreateDistPipeline(const RenderPipelineDescriptor &desc)
+        RenderPipelinePtr PassDistSystem::CreateDistPipeline(const RenderPipelinePtr main)
         {
-            RenderPipelinePtr pipeline = RenderPipeline::CreateRenderPipeline(desc);
-            m_distPipeline = pipeline;
-            printf("PassDistSystem add pipeline [%s]\n", desc.m_name.c_str());
-            return pipeline;
+            if (m_displayEnable)
+            {
+                const RenderPipelineDescriptor desc {.m_rootPassTemplate = AZStd::string("DistPipeline"),
+                    .m_name = AZStd::string("Test_0"),
+                    .m_renderSettings = main->GetDescriptor().m_renderSettings};
+                auto swapPass = azrtti_cast<SwapChainPass*>(main->GetRootPass().get());
+                m_distPipeline = RenderPipeline::CreateRenderPipelineForWindow(desc, *swapPass->GetwindowContext(), swapPass->GetviewType());
+                printf("PassDistSystem::CreateDistPipeline create pipeline for window!\n");
+            }
+            else
+            {
+                const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0"),
+                    .m_renderSettings = main->GetDescriptor().m_renderSettings};
+                m_distPipeline = RenderPipeline::CreateRenderPipeline(desc);
+                printf("PassDistSystem::CreateDistPipeline create pipeline for normal!\n");
+            }
+            printf("PassDistSystem add pipeline [%s]\n", m_distPipeline->GetId().GetCStr());
+            return m_distPipeline;
         }
 
         RenderPipelinePtr PassDistSystem::GetDistPipeline(void)
@@ -1497,6 +1571,11 @@ namespace AZ
         bool PassDistSystem::IsEnable(void)
         {
             return m_state;
+        }
+
+        bool PassDistSystem::IsActive(void)
+        {
+            return (m_state && m_hasDistPass);
         }
     }   // namespace RPI
 }   // namespace AZ

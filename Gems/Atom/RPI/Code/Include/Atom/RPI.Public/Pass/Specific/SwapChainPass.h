@@ -49,6 +49,10 @@ namespace AZ
 
             void ReadbackSwapChain(AZStd::shared_ptr<AttachmentReadback> readback);
 
+            const WindowContext* GetwindowContext() const;
+
+            const ViewType& GetviewType() const;
+
             AzFramework::NativeWindowHandle GetWindowHandle() const;
 
             RHI::Format GetSwapChainFormat() const;

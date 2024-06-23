@@ -88,7 +88,7 @@ namespace AZ
 
             virtual void ProcessDistChanges(Ptr<ParentPass> &root) = 0;
 
-            virtual RenderPipelinePtr CreateDistPipeline(const RenderPipelineDescriptor &desc) = 0;
+            virtual RenderPipelinePtr CreateDistPipeline(const RenderPipelinePtr main) = 0;
 
             virtual RenderPipelinePtr GetDistPipeline(void) = 0;
 
@@ -101,6 +101,8 @@ namespace AZ
             virtual void Disable(void) = 0;
 
             virtual bool IsEnable(void) = 0;
+
+            virtual bool IsActive(void) = 0;
         };
                 
     }   // namespace RPI

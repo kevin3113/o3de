@@ -41,9 +41,18 @@ namespace AZ
         {
             SwapChain* swapChain = aznew SwapChain();
             char *dist = getenv("DIST_PIPE");
-            if (dist)
+            if (dist && atoi(dist))
             {
-                swapChain->m_enabled = false;
+                char *display = getenv("DIST_VIEW");
+                if (display && atoi(display))
+                {
+                    swapChain->m_enabled = true;
+                }
+                else
+                {
+                    swapChain->m_enabled = false;
+                }
+                printf("SwapChain::Create dist pipe swapchain enabled %d!\n", (int)swapChain->m_enabled);
             }
             return swapChain;
         }

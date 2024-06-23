@@ -8,11 +8,20 @@
             "PassClass": "ParentPass",
             "Slots": [
                 {
-                    "Name": "InputOutput",
+                    "Name": "PipelineOutput",
                     "SlotType": "InputOutput",
                     "ScopeAttachmentUsage": "RenderTarget"
                 }
-            ]
+            ],
+            "PassData": {
+                "$type": "PassData",
+                "PipelineGlobalConnections": [
+                    {
+                        "GlobalName": "PipelineOutput",
+                        "Slot": "PipelineOutput"
+                    }
+                ]
+            }
         }
     }
 }

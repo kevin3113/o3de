@@ -222,6 +222,16 @@ namespace AZ
             }
         }
 
+        const WindowContext* SwapChainPass::GetwindowContext() const
+        {
+            return m_windowContext;
+        }
+
+        const ViewType& SwapChainPass::GetviewType() const
+        {
+            return m_viewType;
+        }
+
         AzFramework::NativeWindowHandle SwapChainPass::GetWindowHandle() const
         {
             return m_windowContext->GetWindowHandle();

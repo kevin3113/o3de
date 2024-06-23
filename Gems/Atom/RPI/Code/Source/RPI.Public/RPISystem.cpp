@@ -118,15 +118,6 @@ namespace AZ
             m_shaderSystem.Init();
             m_passSystem.Init();
             m_passDistSystem.Init();
-            char *pipeline = getenv("DIST_PIPE");
-            if (pipeline && atoi(pipeline))
-            {
-                PassDistSystemInterface::Get()->SetActivePipeline(Name("Test_0"));
-            }
-            else
-            {
-                PassDistSystemInterface::Get()->SetActivePipeline(Name());
-            }
             m_featureProcessorFactory.Init();
             m_querySystem.Init(m_descriptor.m_gpuQuerySystemDescriptor);
 
@@ -366,18 +357,11 @@ namespace AZ
                         if (!getenv("PASS_DISABLE"))
                             PassDistSystemInterface::Get()->Enable();
                     }
-                    RenderPipelinePtr def =  scenePtr->GetDefaultRenderPipeline();
+                    const RenderPipelinePtr def =  scenePtr->GetDefaultRenderPipeline();
                     RenderPipelinePtr pipeline = PassDistSystemInterface::Get()->GetDistPipeline();
                     if (pipeline == nullptr)
                     {
-                        const RenderPipelineDescriptor desc {.m_name = AZStd::string("Test_0"), .m_renderSettings = 
-                            def->GetDescriptor().m_renderSettings};
-                        printf("Create pipeline [%s] setting from [%s] size 0x %x_%x_%x\n",
-                            desc.m_name.c_str(), def->GetId().GetCStr(),
-                            def->GetDescriptor().m_renderSettings.m_size.m_width,
-                            def->GetDescriptor().m_renderSettings.m_size.m_height,
-                            def->GetDescriptor().m_renderSettings.m_size.m_depth);
-                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(desc);
+                        pipeline = PassDistSystemInterface::Get()->CreateDistPipeline(def);
                         scenePtr->AddRenderPipeline(pipeline);
                     }
                     else

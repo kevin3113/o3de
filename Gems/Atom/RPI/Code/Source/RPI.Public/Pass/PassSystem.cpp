@@ -224,8 +224,8 @@ namespace AZ
             for (RenderPipeline*& pipeline : m_renderPipelines)
             {
                 Name activePipeline = PassDistSystemInterface::Get()->GetActivePipeline();
-                if (!activePipeline.IsEmpty() // Intel
-                    && pipeline->GetId() != activePipeline)
+                if (!activePipeline.IsEmpty()
+                    && (pipeline->GetId() != activePipeline || !PassDistSystemInterface::Get()->IsActive()))
                 {
                     continue;
                 }
