@@ -115,6 +115,8 @@ namespace AZ
 
             Ptr<Pass> CreateFullscreenShadowDistPass(Name name, Ptr<Pass>prePass, Ptr<Pass> node);
 
+            Ptr<Pass> CreateDistProfiling(Ptr<Pass> pass);
+
             Ptr<Pass> CreateDistCopyToSwapChain(Ptr<Pass> pass);
 
             uint32_t CreateFullscreenShadowDistPrePassMsg(char *buf, uint32_t len, Name name, Ptr<Pass> node);
@@ -207,6 +209,8 @@ namespace AZ
             bool m_hasDistPass = false;
 
             bool m_displayEnable = false;
+
+            bool m_displayProf = true;
 
             Name m_modify;
 

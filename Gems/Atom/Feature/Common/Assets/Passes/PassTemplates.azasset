@@ -589,20 +589,8 @@
                 "Path": "Passes/TaaParent.pass"
             },
             {
-                "Name": "DistPassTemplate",
-                "Path": "Passes/Dist.pass"
-            },
-            {
-                "Name": "DistTemplate",
-                "Path": "Passes/DistTemplate.pass"
-            },
-            {
                 "Name": "DistPipeline",
                 "Path": "Passes/DistPipeline.pass"
-            },
-            {
-                "Name": "DistMainPipeline",
-                "Path": "Passes/DistMainPipeline.pass"
             }
         ]
     }

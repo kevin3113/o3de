@@ -92,6 +92,12 @@ namespace AZ
                     m_displayEnable = true;
                     printf("PassDistSystem::Init dist pipe display enabled!\n");
                 }
+                char *prof = getenv("DIST_PROF");
+                if (prof && atoi(prof) == 0)
+                {
+                    m_displayProf = false;
+                    printf("PassDistSystem::Init dist pipe display profiling disabled!\n");
+                }
             }
             else
             {
@@ -749,6 +755,43 @@ namespace AZ
             return add;
         }
 
+        Ptr<Pass> PassDistSystem::CreateDistProfiling(Ptr<Pass> pass)
+        {
+            AZStd::shared_ptr<PassRequest> req = AZStd::make_shared<PassRequest>();
+            m_requests.emplace_back(req);
+            PassSlotList slots;
+            req->m_passName = Name("ImGui_Dist");
+            req->m_templateName = Name("UIParentTemplate");
+
+            PassConnection conn;
+            conn.m_localSlot = "InputOutput";
+            conn.m_attachmentRef.m_pass = pass->GetName();
+            if (pass->GetOutputCount() > 0)
+            {
+                conn.m_attachmentRef.m_attachment = pass->GetOutputBinding(0).m_name;
+            }
+            else if (pass->GetInputOutputCount() > 0)
+            {
+                conn.m_attachmentRef.m_attachment = pass->GetInputOutputBinding(0).m_name;
+            }
+            else
+            {
+                printf("PassDistSystem::CreateDistProfiling error Pass [%s] has no outputs!\n", pass->GetName().GetCStr());
+                conn.m_attachmentRef.m_attachment = "Output";
+            }
+            req->m_connections.emplace_back(conn);
+/*
+            AZStd::shared_ptr<ImGuiPassData> passData = AZStd::make_shared<ImGuiPassData>();
+            passData->m_isDefaultImGui = true;
+            req->m_passData = passData;
+*/
+            printf("PassDistSystem::CreateDistProfiling Pass [%s] template [%s]\n",
+                req->m_passName.GetCStr(), req->m_templateName.GetCStr());
+
+            Ptr<Pass> add = PassSystemInterface::Get()->CreatePassFromRequest(req.get());
+            return add;
+        }
+
         Ptr<Pass> PassDistSystem::CreateDistCopyToSwapChain(Ptr<Pass> pass)
         {
             AZStd::shared_ptr<PassRequest> req = AZStd::make_shared<PassRequest>();
@@ -773,7 +816,6 @@ namespace AZ
                 printf("PassDistSystem::CreateDistCopyToSwapChain error Pass [%s] has no outputs!\n", pass->GetName().GetCStr());
                 conn.m_attachmentRef.m_attachment = "Output";
             }
-            conn.m_attachmentRef.m_attachment = pass->GetOutputBinding(0).m_name;
             req->m_connections.emplace_back(conn);
             conn.m_localSlot = "Output";
             conn.m_attachmentRef.m_pass = "PipelineGlobal";
@@ -1141,6 +1183,12 @@ namespace AZ
             } while(cur < len);
             if (m_displayEnable)
             {
+                if (m_displayProf)
+                {
+                    pass = CreateDistProfiling(pass);
+                    root->AddChild(pass);
+                    pass->Build(false);
+                }
                 pass = CreateDistCopyToSwapChain(pass);
                 root->AddChild(pass);
                 pass->Build(false);
