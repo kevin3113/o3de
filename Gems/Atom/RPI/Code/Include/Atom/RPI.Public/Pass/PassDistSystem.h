@@ -103,6 +103,10 @@ namespace AZ
 
             void CommInit(bool isServer, const char *path);
 
+            Ptr<Pass> GetBindingPass(ParentPass *pass, PassAttachmentBinding *connected);
+
+            void ProcessSubPasses(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>>& subPasses);
+
             void ShowConnections(Ptr<Pass> &pass);
 
             void AddCommPassSlot(AZStd::shared_ptr<PassTemplate> &passTemplate, PassSlotType slotType, std::string suffix);

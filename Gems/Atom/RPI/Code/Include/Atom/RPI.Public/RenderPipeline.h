@@ -85,6 +85,7 @@ namespace AZ
         {
             friend class Pass;
             friend class PassSystem;
+            friend class PassDistSystem;
             friend class Scene;
 
         public:

@@ -219,6 +219,7 @@ namespace AZ
 
         void Pass::AddAttachmentBinding(PassAttachmentBinding attachmentBinding)
         {
+            attachmentBinding.ownedPass = this;
             auto index = static_cast<uint8_t>(m_attachmentBindings.size());
             // Add the binding. This will assert if the fixed size array is full.
             m_attachmentBindings.push_back(attachmentBinding);

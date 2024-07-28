@@ -518,15 +518,160 @@ namespace AZ
             return 0;
         }
 
-        void ProcessSubPasses(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>>& subPasses)
+        const char *GetSlotTypeName(PassSlotType slotType )
         {
+            if (slotType == PassSlotType::Input)
+            {
+                return "Input";
+            }
+            else if (slotType == PassSlotType::Output)
+            {
+                return "Output";
+            }
+            else if (slotType == PassSlotType::InputOutput)
+            {
+                return "InputOutput";
+            }
+            else
+            {
+                return "Unknow";
+            }
+        }
+
+        Ptr<Pass> PassDistSystem::GetBindingPass(ParentPass *pass, PassAttachmentBinding *connected)
+        {
+            for (auto& slibPass : pass->GetChildren())
+            {
+                for (PassAttachmentBinding &slibBind : slibPass->m_attachmentBindings)
+                {
+                    if (connected == &slibBind)
+                    {
+                        return slibPass;
+                    }
+                }
+                auto subParent = slibPass->AsParent();
+                if (subParent)
+                {
+                    auto findPass = GetBindingPass(subParent, connected);
+                    if (findPass)
+                    {
+                        return findPass;
+                    }
+                }
+            }
+            return nullptr;
+        }
+
+        void PassDistSystem::ProcessSubPasses(Ptr<Pass> pass, AZStd::unordered_map<Name, Ptr<Pass>>& subPasses)
+        {
+            if (!pass->IsEnabled())
+            {
+                return;
+            }
+            subPasses.emplace(pass->GetPathName(), pass);
+            for (PassAttachmentBinding binding : pass->m_attachmentBindings)
+            {
+                if (binding.GetAttachment() == nullptr)
+                {
+                    //printf("Pass [%s] attachment is nullptr\n", pass->GetPathName().GetCStr());
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass == nullptr)
+                {
+                    //printf("Pass [%s] attachment [%s] owner_pass is nullptr\n", pass->GetPathName().GetCStr(),
+                    //    binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                if (!binding.GetAttachment()->m_ownerPass->IsEnabled())
+                {
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass->GetRenderPipeline() == nullptr)
+                {
+                    //printf("Pass [%s] attachment [%s] owner_pass pipeline is nullptr\n", pass->GetPathName().GetCStr(),
+                    //    binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass->GetScene() == nullptr)
+                {
+                    //printf("Pass [%s] attachment [%s] owner_pass scene is nullptr\n", pass->GetPathName().GetCStr(),
+                    //    binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                PassAttachmentBinding *connected = binding.m_connectedBinding;
+                if (!connected)
+                {
+                    printf("pass error_conn [%s] slot [%s] type [%s] connection not found\n",
+                        pass->GetPathName().GetCStr(),
+                        binding.m_name.GetCStr(),
+                        GetSlotTypeName(binding.m_slotType));
+                    continue;
+                }
+                Name srcPassName;
+                #if 0
+                PassAttachmentBinding *srcBinding;
+                Ptr<Pass> slibPass;
+                const PipelineGlobalBinding* globalBinding = pass->GetRenderPipeline()->GetPipelineGlobalConnection((const Name&)connected->m_name);
+                if (globalBinding) // pipeline global
+                {
+                    srcPassName = pass->PipelineGlobalKeyword;
+                }
+                else if (srcBinding = pass->GetParent()->FindAttachmentBinding(connected->m_name)) // parent
+                {
+                    srcPassName = pass->GetParent()->GetPathName();
+                }
+                else if (slibPass = GetBindingPass(pass->GetParent(), connected))// sub pass of parent
+                {
+                    srcPassName = slibPass->GetPathName();
+                }
+                #endif
+                if (connected->ownedPass)
+                {
+                    srcPassName = connected->ownedPass->GetPathName();
+                }
+                if (srcPassName.IsEmpty())
+                {
+                    printf("pass error_bind [%s] slot [%s] type [%s] connect to slot [%s] type [%s] pass not found\n",
+                        pass->GetPathName().GetCStr(),
+                        binding.m_name.GetCStr(),
+                        GetSlotTypeName(binding.m_slotType),
+                        connected->m_name.GetCStr(),
+                        GetSlotTypeName(connected->m_slotType));
+                    continue;
+                }
+                if (binding.m_slotType != PassSlotType::Input && binding.m_slotType != PassSlotType::InputOutput)
+                {
+                    printf("Pass internal connection [%s] slot [%s] type [%s] connect to [%s] slot [%s] type [%s]\n",
+                        pass->GetPathName().GetCStr(),
+                        binding.m_name.GetCStr(),
+                        GetSlotTypeName(binding.m_slotType),
+                        srcPassName.GetCStr(),
+                        connected->m_name.GetCStr(),
+                        GetSlotTypeName(connected->m_slotType));
+                    continue;
+                }
+                if (connected->m_slotType != PassSlotType::Output && connected->m_slotType != PassSlotType::InputOutput)
+                {
+                    printf("Pass mismatch connection [%s] slot [%s] type [%s] connect to [%s] slot [%s] type [%s]\n",
+                        pass->GetPathName().GetCStr(),
+                        binding.m_name.GetCStr(),
+                        GetSlotTypeName(binding.m_slotType),
+                        srcPassName.GetCStr(),
+                        connected->m_name.GetCStr(),
+                        GetSlotTypeName(connected->m_slotType));
+                    continue;
+                }
+                printf("Pass external connection [%s] slot [%s] type [%s] connect to [%s] slot [%s] type [%s]\n",
+                    pass->GetPathName().GetCStr(),
+                    binding.m_name.GetCStr(),
+                    GetSlotTypeName(binding.m_slotType),
+                    srcPassName.GetCStr(),
+                    connected->m_name.GetCStr(),
+                    GetSlotTypeName(connected->m_slotType));
+            }
             ParentPass *parent = pass->AsParent();
-            if (parent == nullptr) {
-                subPasses.emplace(pass->GetName(), pass);
-                //printf("PassDistSystem add leaf pass %s\n", pass->GetName().GetCStr());
-            } else {
-                subPasses.emplace(pass->GetName(), pass);
-                //printf("PassDistSystem walk parent pass %s\n", pass->GetName().GetCStr());
+            if (parent != nullptr)
+            {
                 for (auto& subPass : parent->GetChildren()) {
                     ProcessSubPasses(subPass, subPasses);
                 }
@@ -1201,28 +1346,18 @@ namespace AZ
             return slot.m_name.GetCStr();
         }
 
-        const char *GetSlotTypeName(PassSlotType slotType )
-        {
-            if (slotType == PassSlotType::Input)
-            {
-                return "Input";
-            }
-            else if (slotType == PassSlotType::Output)
-            {
-                return "Output";
-            }
-            else if (slotType == PassSlotType::InputOutput)
-            {
-                return "InputOutput";
-            }
-            else
-            {
-                return "Unknow";
-            }
-        }
-
         void PassDistSystem::ShowConnections(Ptr<Pass> &pass)
         {
+            if (pass->GetRenderPipeline() == nullptr)
+            {
+                printf("Pass [%s] owner_pass pipeline is nullptr\n", pass->GetName().GetCStr());
+                return;
+            }
+            if (pass->GetScene() == nullptr)
+            {
+                printf("Pass [%s] owner_pass scene is nullptr\n", pass->GetName().GetCStr());
+                return;
+            }
             if (pass->m_template != nullptr)
             {
                 printf("Pass [%s] template is [%s] pass class [%s]\n",
@@ -1242,7 +1377,9 @@ namespace AZ
                         conn.m_attachmentRef.m_attachment.GetCStr());
                 }
             }
-            printf("Pass from request template name [%s]\n", pass->m_request.m_templateName.GetCStr());
+            printf("Pass [%s] from request template name [%s] state %d\n", pass->GetName().GetCStr(),
+                pass->m_request.m_templateName.GetCStr(),
+                (int)pass->GetPassState());
             for (auto &conn : pass->m_request.m_connections)
             {
                 printf("Pass from request [%s] slot [%s] connect to pass [%s] slot [%s]\n",
@@ -1252,14 +1389,36 @@ namespace AZ
             }
             for (PassAttachmentBinding binding : pass->m_attachmentBindings)
             {
-                printf("Pass runtime [%s] slot [%s] type [%s] attached id [%s] name [%s] is pass [%s] amatched\n",
-                    pass->GetName().GetCStr(), binding.m_name.GetCStr(),
+                if (binding.GetAttachment() == nullptr)
+                {
+                    printf("Pass [%s] attachment is nullptr\n", pass->GetName().GetCStr());
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass == nullptr)
+                {
+                    printf("Pass [%s] attachment [%s] owner_pass is nullptr\n", pass->GetName().GetCStr(),
+                        binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass->GetRenderPipeline() == nullptr)
+                {
+                    printf("Pass [%s] attachment [%s] owner_pass pipeline is nullptr\n", pass->GetName().GetCStr(),
+                        binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                if (binding.GetAttachment()->m_ownerPass->GetScene() == nullptr)
+                {
+                    printf("Pass [%s] attachment [%s] owner_pass scene is nullptr\n", pass->GetName().GetCStr(),
+                        binding.GetAttachment()->GetAttachmentId().GetCStr());
+                    continue;
+                }
+                printf("Pass runtime [%s] slot [%s] type [%s] attached id [%s] name [%s] is pass [%s] state %d\n",
+                    pass->GetPathName().GetCStr(), binding.m_name.GetCStr(),
                     GetSlotTypeName(binding.m_slotType),
-                    //binding.m_unifiedScopeDesc.m_attachmentId.GetCStr());
                     binding.GetAttachment()->GetAttachmentId().GetCStr(),
                     binding.GetAttachment()->m_name.GetCStr(),
-                    binding.GetAttachment()->m_ownerPass ? binding.GetAttachment()->m_ownerPass->GetName().GetCStr() : "nullptr"
-                    );
+                    binding.GetAttachment()->m_ownerPass->GetPathName().GetCStr(),
+                    (int)binding.GetAttachment()->m_ownerPass->GetPassState());
             }
         }
 
@@ -1420,13 +1579,14 @@ namespace AZ
             for (auto& itr : subPasses)
             {
                 auto pass = itr.second;
-                if (NameEndWith(pass->GetName(), "FullscreenShadowPass"))
+                if (NameEndWith(pass->GetName(), "FullscreenShadowPass111"))
                 {
                     printf("current pass [%s] is matched\n", pass->GetName().GetCStr());
                     procs.emplace_back([pass, subPasses, this]() {
                         this->ProcessFullscreenShadow(pass, subPasses);
                     });
                 }
+                ShowConnections(pass);
             }
             for (auto call : procs)
             {

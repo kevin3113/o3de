@@ -183,6 +183,8 @@ namespace AZ
             //! this is the fallback we will use when the pass is disabled.
             PassAttachmentBinding* m_fallbackBinding = nullptr;
 
+            Pass *ownedPass = nullptr;
+
             static const int16_t ShaderInputAutoBind = -1;
             static const int16_t ShaderInputNoBind = -2;
 
