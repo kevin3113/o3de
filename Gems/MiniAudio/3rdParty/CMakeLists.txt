@@ -18,7 +18,7 @@ FetchContent_Declare(
     URL_HASH     MD5=36713ac98e445271e29547cc2d90b01f # from the main branch @ Jan 29 2023
     DOWNLOAD_NO_EXTRACT TRUE
     DOWNLOAD_NO_PROGRESS TRUE
-    TLS_VERIFY TRUE
+    TLS_VERIFY FALSE
 )
 
 FetchContent_Declare(
@@ -27,7 +27,7 @@ FetchContent_Declare(
     URL_HASH    MD5=7233fe13f5d42c4df37acff873c72bf5 # from tag 0.11.17
     DOWNLOAD_NO_EXTRACT TRUE
     DOWNLOAD_NO_PROGRESS TRUE
-    TLS_VERIFY TRUE
+    TLS_VERIFY FALSE
 )
 
 FetchContent_MakeAvailable(stb_vorbis miniaudio)

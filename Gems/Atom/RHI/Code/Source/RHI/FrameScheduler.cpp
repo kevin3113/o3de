@@ -209,7 +209,7 @@ namespace AZ::RHI
                 return RHI::ResultCode::InvalidArgument;
             }
         }
-        //printf("ImportScopeProducer: add scope producer %s\n", scopeProducer.GetScopeId().GetCStr());
+        printf("ImportScopeProducer: add scope producer %s\n", scopeProducer.GetScopeId().GetCStr());
         //print_stack();
         m_scopeProducers.emplace_back(&scopeProducer);
         return ResultCode::Success;
