@@ -67,7 +67,10 @@ namespace AZ
         uint16_t FullscreenShadowPass::GetDepthBufferMSAACount()
         {
             RPI::PassAttachmentBinding* inputBinding = RPI::Pass::FindAttachmentBinding(m_depthInputName);
-            return inputBinding->GetAttachment()->m_descriptor.m_image.m_multisampleState.m_samples;
+            if (inputBinding->GetAttachment())
+                return inputBinding->GetAttachment()->m_descriptor.m_image.m_multisampleState.m_samples;
+            else
+                return 0;
         }       
 
         void FullscreenShadowPass::SetConstantData()

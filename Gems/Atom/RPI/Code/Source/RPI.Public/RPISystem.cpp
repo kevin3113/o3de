@@ -351,6 +351,7 @@ namespace AZ
             for (auto& scenePtr : m_scenes)
             {
                 printf("---------- Prepare Render Scene [%s] ----------\n", scenePtr->GetName().GetCStr());
+#if 0
                 if (strcmp(scenePtr->GetName().GetCStr(), "Main") == 0) {
                     if (m_renderTick > (g_main_pipeline_start + 10))
                     {
@@ -380,6 +381,7 @@ namespace AZ
                             def->GetRenderSettings().m_size.m_depth);
                     }
                 }
+#endif
                 scenePtr->PrepareRender(m_prepareRenderJobPolicy, m_currentSimulationTime);
             }
 
@@ -390,6 +392,7 @@ namespace AZ
             {
                 numActiveRenderPipelines += scenePtr->GetActiveRenderPipelines();
                 printf("Scene %s has %u active render pipelines\n", scenePtr->GetName().GetCStr(), scenePtr->GetActiveRenderPipelines());
+#if 0
                 for (RenderPipelinePtr pipeline : scenePtr->GetRenderPipelines())
                 {
                     if (strstr(pipeline->GetId().GetCStr(), "MainPipeline")) {
@@ -399,8 +402,10 @@ namespace AZ
                         }
                     }
                 }
+#endif
             }
             printf("numActiveRenderPipelines number is %u\n", numActiveRenderPipelines);
+#if 0
             if (mainPipelineActive && numActiveRenderPipelines == 3)
             {
                 if (g_main_pipeline_start > m_renderTick)
@@ -415,6 +420,7 @@ namespace AZ
                         (int)PassDistSystemInterface::Get()->GetDistPipeline()->GetRootPass()->GetChildren().size());
                 }
             }
+#endif
             m_rhiSystem.SetNumActiveRenderPipelines(numActiveRenderPipelines);
 
             m_rhiSystem.FrameUpdate(

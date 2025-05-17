@@ -72,6 +72,7 @@ namespace AtomToolsFramework
 
     void PreviewRendererSystemComponent::OnSystemTick()
     {
+        return;
         // Do not create the preview reader until the RPI has been initialized
         if (AZ::RPI::RPISystemInterface::Get() && AZ::RPI::RPISystemInterface::Get()->IsInitialized())
         {

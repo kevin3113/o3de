@@ -14,11 +14,41 @@
 VSOutput MainVS(VSInput input)
 {
     VSOutput OUT;
+    //float2 vertPos[3] = {{-0.5, 0.5}, {0.5, -0.5}, {0.5, 0.5}};
+    // OK float2 vertPos[3] = {{-0.2, 0.2}, {0.2, -0.2}, {0.2, 0.2}};
+    //float2 vertPos[3] = {{0, 1}, {0, 0}, {1, 0}};
+    float2 uv[3] = {{0, 0}, {0, 1}, {1, 0}};
+    //float2 vertPos[3] = {{-0.6, -0.2}, {-0.6, -0.6}, {-0.2, -0.6}};
+    float2 vertPos[3] = {{-0.6, -0.6}, {-0.2, -0.6}, {-0.6, -0.2}};
+    //float2 vertPos[3] = {{0, 0.5}, {0.5, 0.5}, {0.5, 0}};
+    //float2 curPos[6] = {{0, 0}, {1, 0}, {0, 1}, {0, 1}, {1, 0}, {1, 1}};
+    float2 curPos[12] = {{0, 0}, {0,0}, {1, 0}, {0,0}, {0, 1}, {0,0}, {0, 1}, {0,0}, {1, 0}, {0,0}, {1, 1}, {0,0}};
 
-    float4 posTex = GetVertexPositionAndTexCoords(input.m_vertexID);
+    float step = 0.001;
+    uint dim = 2000;
+    uint scale = 12;
+    uint idx = input.m_vertexID;
+    float2 start = float2(0, 0);
+    float2 cur = float2(start.x + step * (idx / scale / dim), start.y + step * ((idx / scale) % dim));
+    uint ind = idx % scale;
+    float2 tx = cur + curPos[ind] * step - 1;
     
-    OUT.m_texCoord = float2(posTex.z, posTex.w);
-    OUT.m_position = float4(posTex.x, posTex.y, 0.0, 1.0);
+    // float4 posTex = GetVertexPositionAndTexCoords(input.m_vertexID);
+    // 
+    // OUT.m_texCoord = float2(posTex.z, posTex.w);
+    // OUT.m_position = float4(posTex.x, posTex.y, 0.0, 1.0);
 
+    OUT.m_texCoord = float2((tx.x + 1) / 2, 1 - (tx.y + 1)/2);
+    OUT.m_position = float4(tx, 0, 1.0);
+
+    //OUT.m_texCoord = (vertPos[input.m_vertexID] + float2(1,1)) / 2;
+    //OUT.m_texCoord = float2(2, 2);
+    // OK OUT.m_texCoord = float2(0.5, 0.5);
+    //OUT.m_texCoord = float2(0.5, 0.5);
+    //OUT.m_texCoord = uv[input.m_vertexID];
+    // OK float2 off = float2(-0.1, -0.1);
+
+    //- OUT.m_texCoord = float2((vertPos[input.m_vertexID].x + 1)/2, 1 - ((vertPos[input.m_vertexID].y + 1)/2));
+    //- OUT.m_position = float4(vertPos[input.m_vertexID], 0.0, 1);
     return OUT;
 }

@@ -650,7 +650,7 @@ namespace AZ
             m_passTree.ProcessQueuedChanges();
 
             printf("PassDistSystemInterface [%p]\n", PassDistSystemInterface::Get());
-            PassDistSystemInterface::Get()->ProcessDistChanges(m_passTree.m_rootPass);
+            // PassDistSystemInterface::Get()->ProcessDistChanges(m_passTree.m_rootPass);
 
             if (m_pipelinePassChanges != PipelinePassChanges::NoPassChanges)
             {

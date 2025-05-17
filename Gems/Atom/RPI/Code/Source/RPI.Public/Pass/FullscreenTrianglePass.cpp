@@ -177,7 +177,13 @@ namespace AZ
             // Instead it's expected that the extended class uses a vertex shader 
             // that generates a full-screen triangle completely from vertex ids.
             RHI::DrawLinear draw = RHI::DrawLinear();
-            draw.m_vertexCount = 3;
+            char *trc = (char *)getenv("TRG_CNT");
+            int trgCnt = 1;
+            if (trc != nullptr) {
+                trgCnt = atoi(trc);
+            }
+            printf("== Triangle Input Count is %d\n", trgCnt);
+            draw.m_vertexCount = trgCnt * 3;
 
             m_item.m_arguments = RHI::DrawArguments(draw);
             m_item.m_pipelineState = m_pipelineStateForDraw.Finalize();
